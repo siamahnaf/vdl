@@ -136,31 +136,42 @@ cp package.json "$LIB_DIR/"
 cp bin/vdl "$BIN_DIR/vdl"
 chmod 755 "$BIN_DIR/vdl"
 
-# ─── PATH check ────────────────────────────────────────
+# ─── PATH setup ─────────────────────────────────────────
 echo ""
 
 if echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
   echo -e "  ${GREEN}${BOLD}✓ vdl installed successfully!${RESET}"
 else
-  echo -e "  ${GREEN}${BOLD}✓ vdl installed successfully!${RESET}"
-  echo ""
-  echo -e "  ${YELLOW}⚠${RESET}  Add ${BOLD}${BIN_DIR}${RESET} to your PATH:"
-  echo ""
-
+  # Auto-add to PATH
   SHELL_NAME=$(basename "$SHELL")
+  PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+
   case "$SHELL_NAME" in
     zsh)
-      echo -e "    ${DIM}echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc${RESET}"
-      echo -e "    ${DIM}source ~/.zshrc${RESET}"
+      RC_FILE="$HOME/.zshrc"
       ;;
     bash)
-      echo -e "    ${DIM}echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc${RESET}"
-      echo -e "    ${DIM}source ~/.bashrc${RESET}"
+      RC_FILE="$HOME/.bashrc"
       ;;
     *)
-      echo -e "    ${DIM}export PATH=\"\$HOME/.local/bin:\$PATH\"${RESET}"
+      RC_FILE=""
       ;;
   esac
+
+  if [ -n "$RC_FILE" ]; then
+    # Only add if not already present
+    if ! grep -qF '.local/bin' "$RC_FILE" 2>/dev/null; then
+      echo "" >> "$RC_FILE"
+      echo "# Added by vdl installer" >> "$RC_FILE"
+      echo "$PATH_LINE" >> "$RC_FILE"
+      echo -e "  ${GREEN}✓${RESET} Added ${BOLD}${BIN_DIR}${RESET} to PATH in ${DIM}${RC_FILE}${RESET}"
+    fi
+  fi
+
+  echo -e "  ${GREEN}${BOLD}✓ vdl installed successfully!${RESET}"
+  echo ""
+  echo -e "  ${YELLOW}⚠${RESET}  Restart your terminal or run:"
+  echo -e "    ${DIM}source ${RC_FILE:-~/.bashrc}${RESET}"
 fi
 
 echo ""
