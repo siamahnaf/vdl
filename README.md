@@ -32,8 +32,6 @@ Make sure these are installed before running the install command:
 | Node.js (>=18) | [nodejs.org](https://nodejs.org) | [nodejs.org](https://nodejs.org) |
 | Python 3 | Pre-installed on macOS | [python.org](https://python.org) |
 
-> **Note:** `yt-dlp` and `ffmpeg` are installed automatically by the installer — no need to install them manually.
-
 ## Install
 
 ### macOS / Linux

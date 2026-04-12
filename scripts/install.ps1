@@ -96,7 +96,7 @@ $srcDir = Join-Path $tmpDir "vdl-main"
 Write-Host "  ↓ Setting up..." -ForegroundColor Cyan
 
 Push-Location $srcDir
-npm install --production 2>&1 | Out-Null
+npm install --omit=dev --cache "$tmpDir\.npm-cache" 2>&1 | Out-Null
 Pop-Location
 
 # ─── Copy to install location ──────────────────────────

@@ -116,7 +116,7 @@ export async function performUpdate(): Promise<void> {
     const srcDir = join(tmpDir, 'vdl-main');
 
     console.log('  \x1b[36m↓\x1b[0m Setting up...');
-    await execaCommand('npm install --production', { cwd: srcDir, shell: true, stdio: 'ignore' });
+    await execaCommand(`npm install --omit=dev --cache "${tmpDir}/.npm-cache"`, { cwd: srcDir, shell: true, stdio: 'ignore' });
 
     console.log('  \x1b[36m→\x1b[0m Installing...');
     await execaCommand(`rm -rf "${libDir}/dist" "${libDir}/node_modules" "${libDir}/package.json"`, { shell: true });

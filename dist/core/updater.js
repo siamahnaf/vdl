@@ -99,7 +99,7 @@ export async function performUpdate() {
         await execaCommand(`mkdir -p ${tmpDir} && curl -fsSL https://codeload.github.com/${REPO}/tar.gz/refs/heads/main | tar -xz -C ${tmpDir}`, { shell: true });
         const srcDir = join(tmpDir, 'vdl-main');
         console.log('  \x1b[36m↓\x1b[0m Setting up...');
-        await execaCommand('npm install --production', { cwd: srcDir, shell: true, stdio: 'ignore' });
+        await execaCommand(`npm install --omit=dev --cache "${tmpDir}/.npm-cache"`, { cwd: srcDir, shell: true, stdio: 'ignore' });
         console.log('  \x1b[36m→\x1b[0m Installing...');
         await execaCommand(`rm -rf "${libDir}/dist" "${libDir}/node_modules" "${libDir}/package.json"`, { shell: true });
         await execaCommand(`cp -r "${srcDir}/dist" "${libDir}/dist"`, { shell: true });

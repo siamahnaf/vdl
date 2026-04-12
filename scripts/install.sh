@@ -113,7 +113,7 @@ echo -e "  ${CYAN}↓${RESET} Setting up..."
 
 cd "$SRC_DIR"
 
-if ! npm install --production >/dev/null 2>&1; then
+if ! npm install --omit=dev --cache "$TMP_DIR/.npm-cache" >/dev/null 2>&1; then
   fail "Setup failed. Please try again."
 fi
 
