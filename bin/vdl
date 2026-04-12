@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PREFIX="${PREFIX:-$HOME/.local}"
+LIB="$PREFIX/share/vdl"
+
+exec node "$LIB/dist/index.js" "$@"
