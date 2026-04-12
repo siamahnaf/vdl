@@ -9,8 +9,9 @@ BOLD='\033[1m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-VERSION="1.0.0"
 REPO="siamahnaf/vdl"
+# Version is read from package.json after download — show "latest" in header
+VERSION="latest"
 PREFIX="${PREFIX:-$HOME/.local}"
 BIN_DIR="$PREFIX/bin"
 LIB_DIR="$PREFIX/share/vdl"
@@ -166,7 +167,14 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
   fi
 fi
 
-echo -e "  ${GREEN}${BOLD}✓ vdl installed successfully!${RESET}"
+# Read actual version from installed package.json
+INSTALLED_VER=$(node -e "console.log(require('$LIB_DIR/package.json').version)" 2>/dev/null || echo "")
+VER_DISPLAY=""
+if [ -n "$INSTALLED_VER" ]; then
+  VER_DISPLAY=" ${DIM}(v${INSTALLED_VER})${RESET}"
+fi
+
+echo -e "  ${GREEN}${BOLD}✓ vdl installed successfully!${RESET}${VER_DISPLAY}"
 echo ""
 
 if command -v vdl >/dev/null 2>&1; then
