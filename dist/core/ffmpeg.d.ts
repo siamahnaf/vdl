@@ -12,11 +12,11 @@ export declare function parseMasterPlaylist(content: string, baseUrl: string): M
 /**
  * Fetch and parse an m3u8 URL for available qualities.
  */
-export declare function getM3u8Qualities(m3u8Url: string): Promise<M3u8Quality[]>;
+export declare function getM3u8Qualities(m3u8Url: string, headers?: Record<string, string>): Promise<M3u8Quality[]>;
 /**
  * Download an m3u8 stream using ffmpeg.
  */
-export declare function downloadM3u8(m3u8Url: string, outputDir: string, filename: string, asAudio?: boolean): DownloadHandle;
+export declare function downloadM3u8(m3u8Url: string, outputDir: string, filename: string, asAudio?: boolean, headers?: Record<string, string>): DownloadHandle;
 /**
  * Get the duration of a media stream using ffprobe.
  */

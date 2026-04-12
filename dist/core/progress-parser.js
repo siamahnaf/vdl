@@ -1,3 +1,11 @@
+function formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0)
+        return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
 /**
  * Parse a single line of yt-dlp progress output (with --newline flag).
  * Example lines:
@@ -62,19 +70,30 @@ export function parseYtdlpProgress(line) {
  */
 export function parseFfmpegProgress(line, totalDurationSec) {
     const timeMatch = line.match(/out_time_us=(\d+)/);
-    if (timeMatch && totalDurationSec > 0) {
+    if (timeMatch) {
         const currentSec = parseInt(timeMatch[1], 10) / 1_000_000;
-        const percent = Math.min((currentSec / totalDurationSec) * 100, 100);
+        if (totalDurationSec > 0) {
+            const percent = Math.min((currentSec / totalDurationSec) * 100, 100);
+            return {
+                percent: Math.round(percent * 10) / 10,
+                speed: '',
+                eta: '',
+                downloaded: formatTime(currentSec),
+                total: formatTime(totalDurationSec),
+                status: percent >= 99.9 ? 'complete' : 'downloading',
+            };
+        }
+        // No total duration known — show elapsed time, no percentage
         return {
-            percent: Math.round(percent * 10) / 10,
+            percent: -2, // signal: update downloaded time only
             speed: '',
             eta: '',
-            downloaded: '',
+            downloaded: formatTime(currentSec),
             total: '',
-            status: percent >= 99.9 ? 'complete' : 'downloading',
+            status: 'downloading',
         };
     }
-    const speedMatch = line.match(/speed=([\d.]+x)/);
+    const speedMatch = line.match(/speed=\s*([\d.]+x)/);
     if (speedMatch) {
         return {
             percent: -1, // signal to update speed only
@@ -82,6 +101,18 @@ export function parseFfmpegProgress(line, totalDurationSec) {
             eta: '',
             downloaded: '',
             total: '',
+            status: 'downloading',
+        };
+    }
+    // Also match "frame=", "size=" lines from ffmpeg stderr for size info
+    const sizeMatch = line.match(/size=\s*([\d.]+\S+)/);
+    if (sizeMatch) {
+        return {
+            percent: -1,
+            speed: '',
+            eta: '',
+            downloaded: '',
+            total: sizeMatch[1],
             status: 'downloading',
         };
     }

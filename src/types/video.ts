@@ -31,7 +31,7 @@ export interface VideoInfo {
   formats: VideoFormat[];
 }
 
-export type UrlType = 'ytdlp' | 'direct-m3u8' | 'unknown';
+export type UrlType = 'ytdlp' | 'direct-m3u8' | 'needs-extraction' | 'unknown';
 
 export interface UrlAnalysis {
   type: UrlType;

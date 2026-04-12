@@ -37,8 +37,8 @@ export function parseMasterPlaylist(content, baseUrl) {
 /**
  * Fetch and parse an m3u8 URL for available qualities.
  */
-export async function getM3u8Qualities(m3u8Url) {
-    const response = await fetch(m3u8Url);
+export async function getM3u8Qualities(m3u8Url, headers = {}) {
+    const response = await fetch(m3u8Url, { headers });
     const content = await response.text();
     // Check if it's a master playlist (has stream info)
     if (content.includes('#EXT-X-STREAM-INF:')) {
@@ -56,14 +56,17 @@ export async function getM3u8Qualities(m3u8Url) {
 /**
  * Download an m3u8 stream using ffmpeg.
  */
-export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false) {
+export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, headers = {}) {
     const ext = asAudio ? 'mp3' : 'mp4';
     const outputPath = join(outputDir, `${filename}.${ext}`);
-    const args = [
-        '-i', m3u8Url,
-        '-progress', 'pipe:1',
-        '-y',
-    ];
+    const args = [];
+    // Pass headers to ffmpeg for Cloudflare-protected streams
+    const headerEntries = Object.entries(headers).filter(([k]) => ['cookie', 'referer', 'origin', 'user-agent'].includes(k.toLowerCase()));
+    if (headerEntries.length > 0) {
+        const headerStr = headerEntries.map(([k, v]) => `${k}: ${v}`).join('\r\n');
+        args.push('-headers', headerStr + '\r\n');
+    }
+    args.push('-i', m3u8Url, '-progress', 'pipe:1', '-y');
     if (asAudio) {
         args.push('-vn', '-acodec', 'libmp3lame', '-q:a', '2');
     }

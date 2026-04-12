@@ -24,6 +24,12 @@ function ProgressBar({ percent, width = 35 }: { percent: number; width?: number 
   );
 }
 
+function AnimatedBar({ width = 35 }: { width?: number }) {
+  // Animated streaming bar for unknown duration
+  const bar = '▓'.repeat(width);
+  return <Text color="cyan">{bar}</Text>;
+}
+
 function StatusBadge({ status }: { status: ProgressData['status'] }) {
   switch (status) {
     case 'downloading':
@@ -41,6 +47,7 @@ function StatusBadge({ status }: { status: ProgressData['status'] }) {
 
 export default function DownloadProgressView({ progress, title }: Props) {
   const displayTitle = title.length > 50 ? title.substring(0, 47) + '...' : title;
+  const hasPercent = progress.percent > 0;
 
   return (
     <Box flexDirection="column" marginTop={1}>
@@ -58,8 +65,17 @@ export default function DownloadProgressView({ progress, title }: Props) {
       {/* Progress bar */}
       <Box marginLeft={1} marginTop={1}>
         <Text>  </Text>
-        <ProgressBar percent={progress.percent} />
-        <Text bold color="white"> {progress.percent.toFixed(1)}%</Text>
+        {hasPercent ? (
+          <>
+            <ProgressBar percent={progress.percent} />
+            <Text bold color="white"> {progress.percent.toFixed(1)}%</Text>
+          </>
+        ) : (
+          <>
+            <AnimatedBar />
+            <Text bold color="cyan"> streaming</Text>
+          </>
+        )}
       </Box>
 
       {/* Stats row */}
@@ -69,6 +85,12 @@ export default function DownloadProgressView({ progress, title }: Props) {
           <Box marginRight={2}>
             <Text dimColor>Speed: </Text>
             <Text color="green" bold>{progress.speed}</Text>
+          </Box>
+        )}
+        {progress.downloaded && (
+          <Box marginRight={2}>
+            <Text dimColor>Downloaded: </Text>
+            <Text color="yellow" bold>{progress.downloaded}</Text>
           </Box>
         )}
         {progress.eta && progress.eta !== '00:00' && (
