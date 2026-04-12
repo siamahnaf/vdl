@@ -11,6 +11,7 @@ RESET='\033[0m'
 PREFIX="${PREFIX:-$HOME/.local}"
 BIN_DIR="$PREFIX/bin"
 LIB_DIR="$PREFIX/share/vdl"
+CONFIG_DIR="$HOME/.config/vdl"
 
 echo ""
 echo -e "  ${CYAN}${BOLD}VDL Uninstaller${RESET}"
@@ -31,14 +32,17 @@ if [ -d "$LIB_DIR" ]; then
   REMOVED=1
 fi
 
+if [ -d "$CONFIG_DIR" ]; then
+  rm -rf "$CONFIG_DIR"
+  echo -e "  ${GREEN}✓${RESET} Removed ${DIM}$CONFIG_DIR${RESET}"
+  REMOVED=1
+fi
+
 if [ "$REMOVED" -eq 0 ]; then
   echo -e "  ${DIM}Nothing to remove — vdl is not installed.${RESET}"
 else
   echo ""
-  echo -e "  ${GREEN}${BOLD}✓ vdl uninstalled successfully${RESET}"
-  echo ""
-  echo -e "  ${DIM}Note: Config at ~/.config/vdl/ was preserved.${RESET}"
-  echo -e "  ${DIM}Remove it manually if no longer needed.${RESET}"
+  echo -e "  ${GREEN}${BOLD}✓ vdl uninstalled completely${RESET}"
 fi
 
 echo ""
