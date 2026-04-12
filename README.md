@@ -1,3 +1,9 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/siamahnaf/assets-kit/main/logo/logo-white.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/siamahnaf/assets-kit/main/logo/logo-black.png">
+  <img alt="Siam Ahnaf" src="https://raw.githubusercontent.com/siamahnaf/assets-kit/main/logo/logo-black.png" height="auto" width="240">
+</picture>
+
 # VDL — Video Downloader CLI
 
 Beautiful interactive CLI for downloading videos and audio from any social media platform.
@@ -19,13 +25,14 @@ Beautiful interactive CLI for downloading videos and audio from any social media
 
 ## Prerequisites
 
-Make sure these are installed before using vdl:
+Make sure these are installed before running the install command:
 
 | Tool | macOS | Windows |
 |------|-------|---------|
-| Node.js (≥18) | `brew install node` | `winget install OpenJS.NodeJS` |
-| yt-dlp | `brew install yt-dlp` | `winget install yt-dlp` |
-| ffmpeg | `brew install ffmpeg` | `winget install Gyan.FFmpeg` |
+| Node.js (>=18) | [nodejs.org](https://nodejs.org) | [nodejs.org](https://nodejs.org) |
+| Python 3 | Pre-installed on macOS | [python.org](https://python.org) |
+
+> **Note:** `yt-dlp` and `ffmpeg` are installed automatically by the installer — no need to install them manually.
 
 ## Install
 
@@ -61,11 +68,14 @@ vdl https://youtube.com/watch?v=dQw4w9WgXcQ -q best
 
 # Change download directory
 vdl --set-dir ~/Videos
+
+# Update to latest version
+vdl --update
 ```
 
 ## How It Works
 
-1. Run `vdl` → prompted for URL (or pass it as argument)
+1. Run `vdl` — prompted for URL (or pass it as argument)
 2. CLI analyzes the URL and fetches all available qualities
 3. Select your preferred quality from the interactive list
 4. Choose format — Video (MP4) or Audio (MP3)
@@ -78,6 +88,12 @@ vdl --set-dir ~/Videos
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/siamahnaf/vdl/main/scripts/uninstall.sh | bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/siamahnaf/vdl/main/scripts/uninstall.ps1 | iex
 ```
 
 ## License
