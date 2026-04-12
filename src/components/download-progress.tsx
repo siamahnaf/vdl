@@ -1,10 +1,11 @@
-import React from 'react';
+import type React from 'react';
 import { Box, Text } from 'ink';
 import type { DownloadProgress as ProgressData } from '../types/video.js';
 
 interface Props {
   progress: ProgressData;
   title: string;
+  isStream?: boolean;
 }
 
 function ProgressBar({ percent, width = 35 }: { percent: number; width?: number }) {
@@ -24,8 +25,7 @@ function ProgressBar({ percent, width = 35 }: { percent: number; width?: number 
   );
 }
 
-function AnimatedBar({ width = 35 }: { width?: number }) {
-  // Animated streaming bar for unknown duration
+function StreamBar({ width = 35 }: { width?: number }) {
   const bar = '▓'.repeat(width);
   return <Text color="cyan">{bar}</Text>;
 }
@@ -45,35 +45,32 @@ function StatusBadge({ status }: { status: ProgressData['status'] }) {
   }
 }
 
-export default function DownloadProgressView({ progress, title }: Props) {
+export default function DownloadProgressView({ progress, title, isStream = false }: Props) {
   const displayTitle = title.length > 50 ? title.substring(0, 47) + '...' : title;
-  const hasPercent = progress.percent > 0;
 
   return (
     <Box flexDirection="column" marginTop={1}>
-      {/* Title + Status */}
       <Box>
         <StatusBadge status={progress.status} />
       </Box>
 
-      {/* File name */}
       <Box marginTop={0} marginLeft={1}>
         <Text dimColor>  File: </Text>
         <Text color="white" bold>{displayTitle}</Text>
       </Box>
 
-      {/* Progress bar */}
+      {/* Progress bar — different for stream vs normal */}
       <Box marginLeft={1} marginTop={1}>
         <Text>  </Text>
-        {hasPercent ? (
+        {isStream ? (
           <>
-            <ProgressBar percent={progress.percent} />
-            <Text bold color="white"> {progress.percent.toFixed(1)}%</Text>
+            <StreamBar />
+            <Text bold color="cyan"> streaming</Text>
           </>
         ) : (
           <>
-            <AnimatedBar />
-            <Text bold color="cyan"> streaming</Text>
+            <ProgressBar percent={progress.percent} />
+            <Text bold color="white"> {progress.percent.toFixed(1)}%</Text>
           </>
         )}
       </Box>
@@ -89,7 +86,7 @@ export default function DownloadProgressView({ progress, title }: Props) {
         )}
         {progress.downloaded && (
           <Box marginRight={2}>
-            <Text dimColor>Downloaded: </Text>
+            <Text dimColor>{isStream ? 'Downloaded: ' : 'Downloaded: '}</Text>
             <Text color="yellow" bold>{progress.downloaded}</Text>
           </Box>
         )}

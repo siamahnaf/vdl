@@ -15,8 +15,7 @@ function ProgressBar({ percent, width = 35 }) {
         color = 'magenta';
     return (_jsx(Text, { color: color, children: bar }));
 }
-function AnimatedBar({ width = 35 }) {
-    // Animated streaming bar for unknown duration
+function StreamBar({ width = 35 }) {
     const bar = '▓'.repeat(width);
     return _jsx(Text, { color: "cyan", children: bar });
 }
@@ -34,9 +33,8 @@ function StatusBadge({ status }) {
             return _jsx(Text, { color: "red", bold: true, children: " \u2717 ERROR" });
     }
 }
-export default function DownloadProgressView({ progress, title }) {
+export default function DownloadProgressView({ progress, title, isStream = false }) {
     const displayTitle = title.length > 50 ? title.substring(0, 47) + '...' : title;
-    const hasPercent = progress.percent > 0;
-    return (_jsxs(Box, { flexDirection: "column", marginTop: 1, children: [_jsx(Box, { children: _jsx(StatusBadge, { status: progress.status }) }), _jsxs(Box, { marginTop: 0, marginLeft: 1, children: [_jsx(Text, { dimColor: true, children: "  File: " }), _jsx(Text, { color: "white", bold: true, children: displayTitle })] }), _jsxs(Box, { marginLeft: 1, marginTop: 1, children: [_jsx(Text, { children: "  " }), hasPercent ? (_jsxs(_Fragment, { children: [_jsx(ProgressBar, { percent: progress.percent }), _jsxs(Text, { bold: true, color: "white", children: [" ", progress.percent.toFixed(1), "%"] })] })) : (_jsxs(_Fragment, { children: [_jsx(AnimatedBar, {}), _jsx(Text, { bold: true, color: "cyan", children: " streaming" })] }))] }), _jsxs(Box, { marginLeft: 1, marginTop: 0, children: [_jsx(Text, { children: "  " }), progress.speed && (_jsxs(Box, { marginRight: 2, children: [_jsx(Text, { dimColor: true, children: "Speed: " }), _jsx(Text, { color: "green", bold: true, children: progress.speed })] })), progress.downloaded && (_jsxs(Box, { marginRight: 2, children: [_jsx(Text, { dimColor: true, children: "Downloaded: " }), _jsx(Text, { color: "yellow", bold: true, children: progress.downloaded })] })), progress.eta && progress.eta !== '00:00' && (_jsxs(Box, { marginRight: 2, children: [_jsx(Text, { dimColor: true, children: "ETA: " }), _jsx(Text, { color: "yellow", bold: true, children: progress.eta })] })), progress.total && (_jsxs(Box, { children: [_jsx(Text, { dimColor: true, children: "Size: " }), _jsx(Text, { color: "magenta", bold: true, children: progress.total })] }))] })] }));
+    return (_jsxs(Box, { flexDirection: "column", marginTop: 1, children: [_jsx(Box, { children: _jsx(StatusBadge, { status: progress.status }) }), _jsxs(Box, { marginTop: 0, marginLeft: 1, children: [_jsx(Text, { dimColor: true, children: "  File: " }), _jsx(Text, { color: "white", bold: true, children: displayTitle })] }), _jsxs(Box, { marginLeft: 1, marginTop: 1, children: [_jsx(Text, { children: "  " }), isStream ? (_jsxs(_Fragment, { children: [_jsx(StreamBar, {}), _jsx(Text, { bold: true, color: "cyan", children: " streaming" })] })) : (_jsxs(_Fragment, { children: [_jsx(ProgressBar, { percent: progress.percent }), _jsxs(Text, { bold: true, color: "white", children: [" ", progress.percent.toFixed(1), "%"] })] }))] }), _jsxs(Box, { marginLeft: 1, marginTop: 0, children: [_jsx(Text, { children: "  " }), progress.speed && (_jsxs(Box, { marginRight: 2, children: [_jsx(Text, { dimColor: true, children: "Speed: " }), _jsx(Text, { color: "green", bold: true, children: progress.speed })] })), progress.downloaded && (_jsxs(Box, { marginRight: 2, children: [_jsx(Text, { dimColor: true, children: isStream ? 'Downloaded: ' : 'Downloaded: ' }), _jsx(Text, { color: "yellow", bold: true, children: progress.downloaded })] })), progress.eta && progress.eta !== '00:00' && (_jsxs(Box, { marginRight: 2, children: [_jsx(Text, { dimColor: true, children: "ETA: " }), _jsx(Text, { color: "yellow", bold: true, children: progress.eta })] })), progress.total && (_jsxs(Box, { children: [_jsx(Text, { dimColor: true, children: "Size: " }), _jsx(Text, { color: "magenta", bold: true, children: progress.total })] }))] })] }));
 }
 //# sourceMappingURL=download-progress.js.map

@@ -413,6 +413,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
         <DownloadProgressView
           progress={progress}
           title={videoInfo?.title ?? 'Downloading...'}
+          isStream={isM3u8}
         />
       )}
 
