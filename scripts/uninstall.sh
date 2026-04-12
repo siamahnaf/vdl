@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -20,21 +20,36 @@ echo ""
 
 REMOVED=0
 
+# Remove vdl binary
 if [ -f "$BIN_DIR/vdl" ]; then
   rm -f "$BIN_DIR/vdl"
   echo -e "  ${GREEN}✓${RESET} Removed ${DIM}$BIN_DIR/vdl${RESET}"
   REMOVED=1
 fi
 
+# Remove vdl app + node_modules (includes ffmpeg-static)
 if [ -d "$LIB_DIR" ]; then
   rm -rf "$LIB_DIR"
   echo -e "  ${GREEN}✓${RESET} Removed ${DIM}$LIB_DIR${RESET}"
   REMOVED=1
 fi
 
+# Remove config
 if [ -d "$CONFIG_DIR" ]; then
   rm -rf "$CONFIG_DIR"
   echo -e "  ${GREEN}✓${RESET} Removed ${DIM}$CONFIG_DIR${RESET}"
+  REMOVED=1
+fi
+
+# Remove yt-dlp (installed via pip3)
+if command -v yt-dlp >/dev/null 2>&1; then
+  echo -e "  ${YELLOW}⚠${RESET} Removing yt-dlp..."
+  if pip3 uninstall yt-dlp -y 2>/dev/null; then
+    echo -e "  ${GREEN}✓${RESET} Removed ${DIM}yt-dlp${RESET}"
+  else
+    echo -e "  ${YELLOW}⚠${RESET} Could not remove yt-dlp automatically"
+    echo -e "    ${DIM}Remove manually: pip3 uninstall yt-dlp${RESET}"
+  fi
   REMOVED=1
 fi
 
