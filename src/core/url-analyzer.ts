@@ -7,12 +7,11 @@ export async function analyzeUrl(url: string): Promise<UrlAnalysis> {
     return { type: 'direct-m3u8', url };
   }
 
-  // Try yt-dlp first
+  // Try yt-dlp
   const ytdlpSupported = await isSupported(url);
   if (ytdlpSupported) {
     return { type: 'ytdlp', url };
   }
 
-  // For sites yt-dlp doesn't support, we'll need browser extraction
-  return { type: 'needs-extraction', url };
+  return { type: 'unknown', url };
 }

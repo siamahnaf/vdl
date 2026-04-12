@@ -1,6 +1,10 @@
 import { execa, type ResultPromise } from 'execa';
+import { dirname } from 'path';
+import ffmpegStatic from 'ffmpeg-static';
 import type { VideoFormat, VideoInfo } from '../types/video.js';
 import { formatBytes } from '../utils/format-bytes.js';
+
+const FFMPEG_DIR = dirname(ffmpegStatic as string);
 
 interface YtdlpFormat {
   format_id: string;
@@ -68,7 +72,6 @@ function deduplicateFormats(formats: VideoFormat[]): VideoFormat[] {
     if (!existing) {
       seen.set(key, f);
     } else {
-      // Prefer mp4, then larger filesize
       const preferMp4 = f.extension === 'mp4' && existing.extension !== 'mp4';
       const largerFile = f.filesize && existing.filesize && f.filesize > existing.filesize;
       if (preferMp4 || largerFile) {
@@ -80,13 +83,26 @@ function deduplicateFormats(formats: VideoFormat[]): VideoFormat[] {
   return Array.from(seen.values());
 }
 
-export async function getVideoInfo(url: string): Promise<VideoInfo> {
-  const { stdout } = await execa('yt-dlp', ['-j', '--no-download', url]);
+/**
+ * Check if a URL contains a playlist.
+ */
+export function isPlaylistUrl(url: string): boolean {
+  return url.includes('list=') || url.includes('/playlist');
+}
+
+export async function getVideoInfo(url: string, noPlaylist: boolean = true): Promise<VideoInfo> {
+  const args = [
+    '-j', '--no-download',
+    '--ffmpeg-location', FFMPEG_DIR,
+  ];
+  if (noPlaylist) args.push('--no-playlist');
+  args.push(url);
+
+  const { stdout } = await execa('yt-dlp', args);
   const info: YtdlpInfo = JSON.parse(stdout);
 
   const allFormats = info.formats.map(parseFormat);
 
-  // Separate video+audio and audio-only
   const videoFormats = deduplicateFormats(
     allFormats.filter((f) => f.hasVideo)
   ).sort((a, b) => b.height - a.height);
@@ -114,17 +130,23 @@ export function downloadVideo(
   url: string,
   formatId: string,
   outputDir: string,
+  noPlaylist: boolean = true,
   outputTemplate: string = '%(title)s.%(ext)s'
 ): DownloadHandle {
   const outputPath = `${outputDir}/${outputTemplate}`;
 
-  const proc = execa('yt-dlp', [
-    '-f', formatId,
+  const args = [
+    '-f', `${formatId}+bestaudio/best`,
+    '--merge-output-format', 'mp4',
     '--newline',
+    '--ffmpeg-location', FFMPEG_DIR,
     '-o', outputPath,
     '--no-mtime',
-    url,
-  ]);
+  ];
+  if (noPlaylist) args.push('--no-playlist');
+  args.push(url);
+
+  const proc = execa('yt-dlp', args);
 
   return {
     process: proc,
@@ -136,19 +158,24 @@ export function downloadAudio(
   url: string,
   formatId: string,
   outputDir: string,
+  noPlaylist: boolean = true,
   outputTemplate: string = '%(title)s.%(ext)s'
 ): DownloadHandle {
   const outputPath = `${outputDir}/${outputTemplate}`;
 
-  const proc = execa('yt-dlp', [
+  const args = [
     '-f', formatId,
     '-x',
     '--audio-format', 'mp3',
     '--newline',
+    '--ffmpeg-location', FFMPEG_DIR,
     '-o', outputPath,
     '--no-mtime',
-    url,
-  ]);
+  ];
+  if (noPlaylist) args.push('--no-playlist');
+  args.push(url);
+
+  const proc = execa('yt-dlp', args);
 
   return {
     process: proc,
@@ -158,7 +185,12 @@ export function downloadAudio(
 
 export async function isSupported(url: string): Promise<boolean> {
   try {
-    await execa('yt-dlp', ['--dump-json', '--no-download', url], { timeout: 15000 });
+    await execa('yt-dlp', [
+      '--dump-json', '--no-download',
+      '--no-playlist',
+      '--ffmpeg-location', FFMPEG_DIR,
+      url,
+    ], { timeout: 30000 });
     return true;
   } catch {
     return false;

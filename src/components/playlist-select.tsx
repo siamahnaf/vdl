@@ -1,34 +1,32 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
-import type { VideoFormat } from '../types/video.js';
+
+export type PlaylistChoice = 'single' | 'playlist';
 
 interface Props {
-  formats: VideoFormat[];
-  title: string;
-  onSelect: (format: VideoFormat) => void;
+  onSelect: (choice: PlaylistChoice) => void;
 }
 
-interface SelectItem {
-  key: string;
-  label: string;
-  value: VideoFormat;
-}
+const items = [
+  {
+    key: 'single',
+    label: '🎬  This video only',
+    value: 'single' as PlaylistChoice,
+  },
+  {
+    key: 'playlist',
+    label: '📋  Entire playlist',
+    value: 'playlist' as PlaylistChoice,
+  },
+];
 
-export default function QualitySelect({ formats, title, onSelect }: Props) {
-  const items: SelectItem[] = formats.map((f, i) => ({
-    key: `${f.formatId}-${i}`,
-    label: f.label,
-    value: f,
-  }));
-
+export default function PlaylistSelect({ onSelect }: Props) {
   return (
     <Box flexDirection="column">
       <Box marginBottom={0}>
         <Text color="green" bold>? </Text>
-        <Text bold>Select quality</Text>
-        <Text dimColor> — </Text>
-        <Text color="yellow">{title}</Text>
+        <Text bold>This URL contains a playlist. What would you like to download?</Text>
       </Box>
       <Box marginLeft={2}>
         <SelectInput

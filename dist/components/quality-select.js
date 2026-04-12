@@ -2,7 +2,8 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
 export default function QualitySelect({ formats, title, onSelect }) {
-    const items = formats.map((f) => ({
+    const items = formats.map((f, i) => ({
+        key: `${f.formatId}-${i}`,
         label: f.label,
         value: f,
     }));

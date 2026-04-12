@@ -1,5 +1,8 @@
 import { execa } from 'execa';
+import { dirname } from 'path';
+import ffmpegStatic from 'ffmpeg-static';
 import { formatBytes } from '../utils/format-bytes.js';
+const FFMPEG_DIR = dirname(ffmpegStatic);
 function buildLabel(f) {
     const size = f.filesize ? ` ~ ${formatBytes(f.filesize)}` : '';
     if (!f.hasVideo && f.hasAudio) {
@@ -38,7 +41,6 @@ function deduplicateFormats(formats) {
             seen.set(key, f);
         }
         else {
-            // Prefer mp4, then larger filesize
             const preferMp4 = f.extension === 'mp4' && existing.extension !== 'mp4';
             const largerFile = f.filesize && existing.filesize && f.filesize > existing.filesize;
             if (preferMp4 || largerFile) {
@@ -48,11 +50,23 @@ function deduplicateFormats(formats) {
     }
     return Array.from(seen.values());
 }
-export async function getVideoInfo(url) {
-    const { stdout } = await execa('yt-dlp', ['-j', '--no-download', url]);
+/**
+ * Check if a URL contains a playlist.
+ */
+export function isPlaylistUrl(url) {
+    return url.includes('list=') || url.includes('/playlist');
+}
+export async function getVideoInfo(url, noPlaylist = true) {
+    const args = [
+        '-j', '--no-download',
+        '--ffmpeg-location', FFMPEG_DIR,
+    ];
+    if (noPlaylist)
+        args.push('--no-playlist');
+    args.push(url);
+    const { stdout } = await execa('yt-dlp', args);
     const info = JSON.parse(stdout);
     const allFormats = info.formats.map(parseFormat);
-    // Separate video+audio and audio-only
     const videoFormats = deduplicateFormats(allFormats.filter((f) => f.hasVideo)).sort((a, b) => b.height - a.height);
     const audioFormats = deduplicateFormats(allFormats.filter((f) => f.hasAudio && !f.hasVideo));
     return {
@@ -64,31 +78,40 @@ export async function getVideoInfo(url) {
         formats: [...videoFormats, ...audioFormats],
     };
 }
-export function downloadVideo(url, formatId, outputDir, outputTemplate = '%(title)s.%(ext)s') {
+export function downloadVideo(url, formatId, outputDir, noPlaylist = true, outputTemplate = '%(title)s.%(ext)s') {
     const outputPath = `${outputDir}/${outputTemplate}`;
-    const proc = execa('yt-dlp', [
-        '-f', formatId,
+    const args = [
+        '-f', `${formatId}+bestaudio/best`,
+        '--merge-output-format', 'mp4',
         '--newline',
+        '--ffmpeg-location', FFMPEG_DIR,
         '-o', outputPath,
         '--no-mtime',
-        url,
-    ]);
+    ];
+    if (noPlaylist)
+        args.push('--no-playlist');
+    args.push(url);
+    const proc = execa('yt-dlp', args);
     return {
         process: proc,
         cancel: () => proc.kill(),
     };
 }
-export function downloadAudio(url, formatId, outputDir, outputTemplate = '%(title)s.%(ext)s') {
+export function downloadAudio(url, formatId, outputDir, noPlaylist = true, outputTemplate = '%(title)s.%(ext)s') {
     const outputPath = `${outputDir}/${outputTemplate}`;
-    const proc = execa('yt-dlp', [
+    const args = [
         '-f', formatId,
         '-x',
         '--audio-format', 'mp3',
         '--newline',
+        '--ffmpeg-location', FFMPEG_DIR,
         '-o', outputPath,
         '--no-mtime',
-        url,
-    ]);
+    ];
+    if (noPlaylist)
+        args.push('--no-playlist');
+    args.push(url);
+    const proc = execa('yt-dlp', args);
     return {
         process: proc,
         cancel: () => proc.kill(),
@@ -96,7 +119,12 @@ export function downloadAudio(url, formatId, outputDir, outputTemplate = '%(titl
 }
 export async function isSupported(url) {
     try {
-        await execa('yt-dlp', ['--dump-json', '--no-download', url], { timeout: 15000 });
+        await execa('yt-dlp', [
+            '--dump-json', '--no-download',
+            '--no-playlist',
+            '--ffmpeg-location', FFMPEG_DIR,
+            url,
+        ], { timeout: 30000 });
         return true;
     }
     catch {

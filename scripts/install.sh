@@ -69,6 +69,19 @@ else
   fail "Installation cancelled"
 fi
 
+# --- Fix Python SSL certificates (common macOS issue) ---
+if [ "$(uname)" = "Darwin" ]; then
+  # macOS Python often lacks SSL certs — fix silently
+  PYTHON_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+  CERT_SCRIPT="/Applications/Python ${PYTHON_VER}/Install Certificates.command"
+
+  if [ -f "$CERT_SCRIPT" ]; then
+    bash "$CERT_SCRIPT" >/dev/null 2>&1 || true
+  else
+    pip3 install --upgrade certifi >/dev/null 2>&1 || true
+  fi
+fi
+
 # --- yt-dlp (auto-install) ---
 if command -v yt-dlp >/dev/null 2>&1; then
   YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "found")
