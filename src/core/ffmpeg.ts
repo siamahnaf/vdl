@@ -100,6 +100,11 @@ export function downloadM3u8(
   }
 
   args.push(
+    // Multiple concurrent connections for faster segment downloads
+    '-multiple_requests', '1',
+    '-tcp_nodelay', '1',
+    // Allow faster HLS segment fetching
+    '-http_persistent', '1',
     '-i', m3u8Url,
     '-progress', 'pipe:1',
     '-y',
@@ -110,6 +115,9 @@ export function downloadM3u8(
   } else {
     args.push('-c', 'copy', '-bsf:a', 'aac_adtstoasc');
   }
+
+  // Use all CPU threads
+  args.push('-threads', '0');
 
   args.push(outputPath);
 

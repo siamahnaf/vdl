@@ -202,7 +202,8 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
         const outputDir = config.downloadDir;
 
         if (isM3u8) {
-          const streamUrl = selectedM3u8 || m3u8Url;
+          // Always use quality-specific URL, never the master playlist
+          const streamUrl = selectedM3u8 || (m3u8Qualities.length > 0 ? m3u8Qualities[0]!.url : m3u8Url);
           const filename = videoInfo?.title ?? `vdl-${Date.now()}`;
           const asAudio = mediaFormat === 'audio';
 

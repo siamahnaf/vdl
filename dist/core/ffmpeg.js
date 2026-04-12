@@ -66,13 +66,19 @@ export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, head
         const headerStr = headerEntries.map(([k, v]) => `${k}: ${v}`).join('\r\n');
         args.push('-headers', headerStr + '\r\n');
     }
-    args.push('-i', m3u8Url, '-progress', 'pipe:1', '-y');
+    args.push(
+    // Multiple concurrent connections for faster segment downloads
+    '-multiple_requests', '1', '-tcp_nodelay', '1', 
+    // Allow faster HLS segment fetching
+    '-http_persistent', '1', '-i', m3u8Url, '-progress', 'pipe:1', '-y');
     if (asAudio) {
         args.push('-vn', '-acodec', 'libmp3lame', '-q:a', '2');
     }
     else {
         args.push('-c', 'copy', '-bsf:a', 'aac_adtstoasc');
     }
+    // Use all CPU threads
+    args.push('-threads', '0');
     args.push(outputPath);
     const proc = execa(FFMPEG, args);
     return {
