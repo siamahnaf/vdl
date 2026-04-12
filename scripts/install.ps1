@@ -1,10 +1,17 @@
 # VDL Installer for Windows (PowerShell)
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "SilentlyContinue"
 
 $VERSION = "1.0.0"
 $REPO = "siamahnaf/vdl"
 $INSTALL_DIR = "$env:LOCALAPPDATA\vdl"
 $BIN_DIR = "$INSTALL_DIR\bin"
+
+function Fail($msg) {
+    Write-Host ""
+    Write-Host "  ✗ $msg" -ForegroundColor Red
+    Write-Host ""
+    exit 1
+}
 
 # ─── Header ─────────────────────────────────────────────
 Write-Host ""
@@ -16,61 +23,52 @@ Write-Host ""
 Write-Host "  Checking dependencies..." -ForegroundColor White
 Write-Host ""
 
-# --- Node.js (required — must be pre-installed) ---
+# --- Node.js ---
 $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
 if ($nodeCmd) {
     $nodeVer = try { & node --version 2>&1 | Select-Object -First 1 } catch { "found" }
-    Write-Host "  ✓ node ($nodeVer)" -ForegroundColor Green
+    Write-Host "  ✓ Node.js ($nodeVer)" -ForegroundColor Green
 } else {
-    Write-Host "  ✗ node not found" -ForegroundColor Red
+    Write-Host "  ✗ Node.js not found" -ForegroundColor Red
     Write-Host ""
-    Write-Host "  Node.js is required:" -ForegroundColor Red
-    Write-Host "    https://nodejs.org  (download & install)" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  After installing Node.js, re-run this installer." -ForegroundColor DarkGray
-    Write-Host ""
-    exit 1
+    Write-Host "  Please install Node.js first:" -ForegroundColor White
+    Write-Host "    https://nodejs.org" -ForegroundColor Cyan
+    Fail "Installation cancelled"
 }
 
-# --- pip (needed for yt-dlp) ---
-$pipCmd = Get-Command pip -ErrorAction SilentlyContinue
-if (-not $pipCmd) {
-    $pipCmd = Get-Command pip3 -ErrorAction SilentlyContinue
-}
+# --- pip ---
+$pipCmd = Get-Command pip3 -ErrorAction SilentlyContinue
+if (-not $pipCmd) { $pipCmd = Get-Command pip -ErrorAction SilentlyContinue }
 $pipName = if ($pipCmd) { $pipCmd.Name } else { $null }
 
 if ($pipCmd) {
-    Write-Host "  ✓ $pipName (available)" -ForegroundColor Green
+    Write-Host "  ✓ Python (available)" -ForegroundColor Green
 } else {
-    Write-Host "  ✗ pip not found" -ForegroundColor Red
+    Write-Host "  ✗ Python not found" -ForegroundColor Red
     Write-Host ""
-    Write-Host "  Python pip is required to install yt-dlp:" -ForegroundColor Red
-    Write-Host "    https://python.org  (download & install, check 'Add to PATH')" -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
+    Write-Host "  Please install Python first:" -ForegroundColor White
+    Write-Host "    https://python.org" -ForegroundColor Cyan
+    Fail "Installation cancelled"
 }
 
-# --- yt-dlp (auto-install via pip) ---
+# --- yt-dlp (auto-install) ---
 $ytdlpCmd = Get-Command yt-dlp -ErrorAction SilentlyContinue
 if ($ytdlpCmd) {
     $ytdlpVer = try { & yt-dlp --version 2>&1 | Select-Object -First 1 } catch { "found" }
     Write-Host "  ✓ yt-dlp ($ytdlpVer)" -ForegroundColor Green
 } else {
-    Write-Host "  ⚠ yt-dlp not found — installing via $pipName..." -ForegroundColor Yellow
-    Write-Host "    ↓ $pipName install yt-dlp" -ForegroundColor DarkGray
+    Write-Host "  ↓ Installing yt-dlp..." -ForegroundColor Cyan
 
     try {
-        & $pipName install yt-dlp 2>$null
-        Write-Host "  ✓ yt-dlp installed" -ForegroundColor Green
+        & $pipName install yt-dlp 2>&1 | Out-Null
+        Write-Host "  ✓ yt-dlp (installed)" -ForegroundColor Green
     } catch {
-        Write-Host "  ✗ Failed to install yt-dlp" -ForegroundColor Red
-        Write-Host "    Try manually: $pipName install yt-dlp" -ForegroundColor Yellow
-        exit 1
+        Fail "Could not install yt-dlp. Please try again."
     }
 }
 
-# --- ffmpeg (bundled via npm) ---
-Write-Host "  ✓ ffmpeg (bundled via npm)" -ForegroundColor Green
+# --- ffmpeg ---
+Write-Host "  ✓ ffmpeg (included)" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "  ✓ All dependencies ready" -ForegroundColor Green
@@ -85,27 +83,24 @@ New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
 $zipUrl = "https://github.com/$REPO/archive/refs/heads/main.zip"
 $zipPath = Join-Path $tmpDir "vdl.zip"
 
-Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
-Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
+try {
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+    Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force -ErrorAction Stop
+} catch {
+    Fail "Download failed. Please check your internet connection."
+}
 
 $srcDir = Join-Path $tmpDir "vdl-main"
 
-# ─── Install npm packages (includes ffmpeg-static) ─────
-Write-Host "  ↓ Installing packages..." -ForegroundColor Cyan
+# ─── Install packages ─────────────────────────────────
+Write-Host "  ↓ Setting up..." -ForegroundColor Cyan
 
 Push-Location $srcDir
-npm install --silent 2>$null
-
-# ─── Build ──────────────────────────────────────────────
-Write-Host "  ⟳ Building..." -ForegroundColor Cyan
-npm run build --silent 2>$null
-
-# Remove devDependencies after build
-npm prune --production --silent 2>$null
+npm install --production 2>&1 | Out-Null
 Pop-Location
 
 # ─── Copy to install location ──────────────────────────
-Write-Host "  → Installing to $INSTALL_DIR" -ForegroundColor Cyan
+Write-Host "  → Installing..." -ForegroundColor Cyan
 
 if (Test-Path $INSTALL_DIR) {
     Remove-Item -Recurse -Force $INSTALL_DIR
@@ -118,24 +113,17 @@ Copy-Item -Recurse "$srcDir\dist" "$INSTALL_DIR\dist"
 Copy-Item -Recurse "$srcDir\node_modules" "$INSTALL_DIR\node_modules"
 Copy-Item "$srcDir\package.json" "$INSTALL_DIR\package.json"
 
-# Create .cmd shim
 $cmdContent = @"
 @echo off
 node "%~dp0\..\dist\index.js" %*
 "@
 Set-Content -Path "$BIN_DIR\vdl.cmd" -Value $cmdContent
 
-# ─── PATH check ────────────────────────────────────────
+# ─── PATH ──────────────────────────────────────────────
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 
 if ($userPath -notlike "*$BIN_DIR*") {
     [Environment]::SetEnvironmentVariable("Path", "$BIN_DIR;$userPath", "User")
-    Write-Host ""
-    Write-Host "  ✓ Added $BIN_DIR to your PATH" -ForegroundColor Green
-    Write-Host "    Restart your terminal for the change to take effect." -ForegroundColor Yellow
-} else {
-    Write-Host ""
-    Write-Host "  ✓ PATH already configured" -ForegroundColor Green
 }
 
 # ─── Cleanup ────────────────────────────────────────────
@@ -144,7 +132,7 @@ Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
 Write-Host ""
 Write-Host "  ✓ vdl installed successfully!" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Run " -NoNewline -ForegroundColor DarkGray
+Write-Host "  Restart your terminal, then run " -NoNewline -ForegroundColor DarkGray
 Write-Host "vdl" -NoNewline -ForegroundColor Cyan
 Write-Host " to get started." -ForegroundColor DarkGray
 Write-Host ""

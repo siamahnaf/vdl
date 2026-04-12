@@ -1,0 +1,1 @@
+{"version":3,"file":"format-select.d.ts","sourceRoot":"","sources":["../../src/components/format-select.tsx"],"names":[],"mappings":"AAIA,MAAM,MAAM,WAAW,GAAG,OAAO,GAAG,OAAO,CAAC;AAE5C,UAAU,KAAK;IACb,QAAQ,EAAE,CAAC,MAAM,EAAE,WAAW,KAAK,IAAI,CAAC;CACzC;AAaD,MAAM,CAAC,OAAO,UAAU,YAAY,CAAC,EAAE,QAAQ,EAAE,EAAE,KAAK,2CAuBvD"}

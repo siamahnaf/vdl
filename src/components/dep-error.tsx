@@ -17,10 +17,7 @@ export default function DepError({ deps }: Props) {
   return (
     <Box flexDirection="column" marginTop={1}>
       <Box>
-        <Text color="red" bold>  ✗ Missing dependencies</Text>
-      </Box>
-      <Box marginLeft={4} marginTop={0}>
-        <Text dimColor>The following tools are required. Install them and run vdl again:</Text>
+        <Text color="red" bold>  ✗ Some required tools are missing</Text>
       </Box>
 
       {missing.map((dep) => (
@@ -28,20 +25,19 @@ export default function DepError({ deps }: Props) {
           <Box>
             <Text color="red">✗ </Text>
             <Text bold>{dep.name}</Text>
-            <Text dimColor> not found</Text>
+            <Text dimColor> — not installed</Text>
           </Box>
           <Box marginLeft={2}>
-            <Text dimColor>Install: </Text>
-            <Text color="yellow">{dep.installHint}</Text>
+            <Text dimColor>To install, visit: </Text>
+            <Text color="cyan">{dep.installHint}</Text>
           </Box>
         </Box>
       ))}
 
       <Box marginTop={1} marginLeft={4}>
-        <Text dimColor>Or re-run the installer to auto-install them:</Text>
-      </Box>
-      <Box marginLeft={6}>
-        <Text color="cyan">curl -fsSL https://raw.githubusercontent.com/siamahnaf/vdl/main/scripts/install.sh | bash</Text>
+        <Text dimColor>Install the missing tools above, then run </Text>
+        <Text color="cyan" bold>vdl</Text>
+        <Text dimColor> again.</Text>
       </Box>
     </Box>
   );

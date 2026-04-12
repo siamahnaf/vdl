@@ -20,9 +20,6 @@ export async function checkDependencies(): Promise<{
   allFound: boolean;
   deps: DepStatus[];
 }> {
-  // ffmpeg is bundled via ffmpeg-static npm package — no system check needed.
-  // Only yt-dlp needs to be on the system (installed via pip3).
-
   const ytdlpVersion = await checkCommand('yt-dlp');
 
   const deps: DepStatus[] = [
@@ -30,7 +27,7 @@ export async function checkDependencies(): Promise<{
       name: 'yt-dlp',
       found: ytdlpVersion !== null,
       version: ytdlpVersion ?? '',
-      installHint: 'pip3 install yt-dlp',
+      installHint: 'https://github.com/yt-dlp/yt-dlp#installation',
     },
   ];
 

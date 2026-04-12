@@ -148,16 +148,16 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
 
           const hasPlaywright = await isPlaywrightAvailable();
           if (!hasPlaywright) {
-            setErrorMsg('This site requires Playwright for video extraction');
-            setErrorHint('Run: npm install -g playwright && npx playwright install chromium');
+            setErrorMsg('This site requires a browser engine for video extraction');
+            setErrorHint('This feature is not available yet for this site');
             setState('error');
             return;
           }
 
           const extracted = await extractM3u8Url(url);
           if (!extracted) {
-            setErrorMsg('Could not find a video stream on this page');
-            setErrorHint('The page may require interaction or the video may be DRM-protected');
+            setErrorMsg('Could not find a video on this page');
+            setErrorHint('The video may be protected or the site may not be supported');
             setState('error');
             return;
           }
@@ -178,12 +178,12 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
             setState('quality-select');
           }
         } else {
-          setErrorMsg('Unsupported URL');
-          setErrorHint('Make sure the URL is correct and the site is supported');
+          setErrorMsg('This URL is not supported');
+          setErrorHint('Make sure the URL is correct and try again');
           setState('error');
         }
       } catch (err: any) {
-        setErrorMsg(err.message || 'Failed to analyze URL');
+        setErrorMsg('Could not load video from this URL');
         setErrorHint('Check the URL and try again');
         setState('error');
       }
@@ -262,7 +262,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
           setState('complete');
         }
       } catch (err: any) {
-        setErrorMsg(err.message || 'Download failed');
+        setErrorMsg('Download failed');
         setErrorHint('Check your internet connection and try again');
         setState('error');
       }

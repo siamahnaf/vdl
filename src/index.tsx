@@ -69,7 +69,7 @@ if (cli.flags.setDir) {
   const { saveConfig, loadConfig } = await import('./config/store.js');
   const config = loadConfig();
   saveConfig({ ...config, downloadDir: cli.flags.setDir });
-  console.log(`✓ Download directory set to: ${cli.flags.setDir}`);
+  console.log(`  ✓ Download location set to: ${cli.flags.setDir}`);
   process.exit(0);
 }
 

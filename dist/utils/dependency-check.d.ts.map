@@ -1,0 +1,1 @@
+{"version":3,"file":"dependency-check.d.ts","sourceRoot":"","sources":["../../src/utils/dependency-check.ts"],"names":[],"mappings":"AAEA,UAAU,SAAS;IACjB,IAAI,EAAE,MAAM,CAAC;IACb,KAAK,EAAE,OAAO,CAAC;IACf,OAAO,EAAE,MAAM,CAAC;IAChB,WAAW,EAAE,MAAM,CAAC;CACrB;AAWD,wBAAsB,iBAAiB,IAAI,OAAO,CAAC;IACjD,QAAQ,EAAE,OAAO,CAAC;IAClB,IAAI,EAAE,SAAS,EAAE,CAAC;CACnB,CAAC,CAgBD"}

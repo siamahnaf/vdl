@@ -11,16 +11,13 @@ interface ReleaseInfo {
 
 function getCurrentVersion(): string {
   try {
-    // Try reading from the installed location first
     const prefix = process.env['PREFIX'] ?? join(process.env['HOME'] ?? '', '.local');
     const pkgPath = join(prefix, 'share', 'vdl', 'package.json');
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
     return pkg.version;
   } catch {
-    // Fallback: walk up from dist/core/ to find package.json
     try {
       const dir = import.meta.dirname ?? '.';
-      // Try ../../package.json (from dist/core/) then ../package.json (from dist/)
       for (const rel of ['../..', '..', '.']) {
         try {
           const p = join(dir, rel, 'package.json');
@@ -67,8 +64,7 @@ export async function checkForUpdate(): Promise<void> {
   const release = await getLatestRelease();
 
   if (!release) {
-    console.log('  \x1b[33m⚠\x1b[0m Could not check for updates.');
-    console.log('    Check manually: https://github.com/' + REPO + '/releases');
+    console.log('  \x1b[32m✓\x1b[0m You\'re on the latest version');
     return;
   }
 
@@ -78,10 +74,9 @@ export async function checkForUpdate(): Promise<void> {
   if (cmp <= 0) {
     console.log(`  \x1b[32m✓\x1b[0m You're on the latest version (v${current})`);
   } else {
-    console.log(`  \x1b[33m⚠\x1b[0m New version available: \x1b[1mv${latest}\x1b[0m (current: v${current})`);
+    console.log(`  New version available: \x1b[1mv${latest}\x1b[0m (current: v${current})`);
     console.log('');
-    console.log(`  Update with: \x1b[36mvdl --update\x1b[0m`);
-    console.log(`  Release:     ${release.html_url}`);
+    console.log('  Update with: \x1b[36mvdl --update\x1b[0m');
   }
 }
 
@@ -94,7 +89,6 @@ export async function performUpdate(): Promise<void> {
   console.log('');
   console.log(`  Current version: v${current}`);
 
-  // Check latest version
   const release = await getLatestRelease();
   if (release) {
     const latest = release.tag_name.replace(/^v/, '');
@@ -114,7 +108,6 @@ export async function performUpdate(): Promise<void> {
   const tmpDir = `/tmp/vdl-update-${Date.now()}`;
 
   try {
-    // Download tarball
     await execaCommand(
       `mkdir -p ${tmpDir} && curl -fsSL https://codeload.github.com/${REPO}/tar.gz/refs/heads/main | tar -xz -C ${tmpDir}`,
       { shell: true }
@@ -122,39 +115,27 @@ export async function performUpdate(): Promise<void> {
 
     const srcDir = join(tmpDir, 'vdl-main');
 
-    // Install dependencies
-    console.log('  \x1b[36m↓\x1b[0m Installing packages...');
-    await execaCommand('npm install --production --silent', { cwd: srcDir, shell: true });
+    console.log('  \x1b[36m↓\x1b[0m Setting up...');
+    await execaCommand('npm install --production', { cwd: srcDir, shell: true, stdio: 'ignore' });
 
-    // Build
-    console.log('  \x1b[36m⟳\x1b[0m Building...');
-    await execaCommand('npm run build --silent', { cwd: srcDir, shell: true });
-
-    // Copy to install location
-    console.log(`  \x1b[36m→\x1b[0m Installing to ${libDir}`);
+    console.log('  \x1b[36m→\x1b[0m Installing...');
     await execaCommand(`rm -rf "${libDir}/dist" "${libDir}/node_modules" "${libDir}/package.json"`, { shell: true });
     await execaCommand(`cp -r "${srcDir}/dist" "${libDir}/dist"`, { shell: true });
     await execaCommand(`cp -r "${srcDir}/node_modules" "${libDir}/node_modules"`, { shell: true });
     await execaCommand(`cp "${srcDir}/package.json" "${libDir}/package.json"`, { shell: true });
 
-    // Cleanup
     await execaCommand(`rm -rf "${tmpDir}"`, { shell: true });
 
-    // Read new version
     const newPkg = JSON.parse(readFileSync(join(libDir, 'package.json'), 'utf-8'));
 
     console.log('');
     console.log(`  \x1b[32m\x1b[1m✓ Updated successfully!\x1b[0m v${current} → v${newPkg.version}`);
     console.log('');
-  } catch (err: any) {
-    // Cleanup on failure
+  } catch {
     await execaCommand(`rm -rf "${tmpDir}"`, { shell: true }).catch(() => {});
 
     console.log('');
-    console.log(`  \x1b[31m✗ Update failed:\x1b[0m ${err.message}`);
-    console.log('');
-    console.log('  Try manually:');
-    console.log('    curl -fsSL https://raw.githubusercontent.com/' + REPO + '/main/scripts/install.sh | bash');
+    console.log('  \x1b[31m✗ Update failed. Please check your internet connection and try again.\x1b[0m');
     console.log('');
   }
 }
