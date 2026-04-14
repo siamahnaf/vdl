@@ -132,6 +132,7 @@ export async function getVideoInfo(url: string, noPlaylist: boolean = true): Pro
 export interface DownloadHandle {
   process: ResultPromise;
   cancel: () => void;
+  outputPath?: string;
 }
 
 export function downloadVideo(

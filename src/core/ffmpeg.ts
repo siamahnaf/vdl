@@ -1,5 +1,6 @@
 import { execa, type ResultPromise } from 'execa';
 import { join, dirname } from 'path';
+import { tmpdir } from 'os';
 import ffmpegStatic from 'ffmpeg-static';
 import type { DownloadHandle } from './ytdlp.js';
 
@@ -13,6 +14,7 @@ export interface M3u8Quality {
   resolution: string;
   bandwidth: number;
   label: string;
+  height: number;
 }
 
 /**
@@ -36,13 +38,15 @@ export function parseMasterPlaylist(content: string, baseUrl: string): M3u8Quali
 
         const resolution = resMatch ? resMatch[1]! : 'unknown';
         const bandwidth = bwMatch ? parseInt(bwMatch[1]!, 10) : 0;
-        const height = resolution.split('x')[1] ?? '';
+        const heightStr = resolution.split('x')[1] ?? '';
+        const height = parseInt(heightStr, 10) || 0;
 
         qualities.push({
           url: streamUrl,
           resolution,
           bandwidth,
           label: height ? `${height}p` : resolution,
+          height,
         });
       }
     }
@@ -73,6 +77,7 @@ export async function getM3u8Qualities(
     resolution: 'default',
     bandwidth: 0,
     label: 'Default quality',
+    height: 0,
   }];
 }
 
@@ -84,12 +89,15 @@ export function downloadM3u8(
   outputDir: string,
   filename: string,
   asAudio: boolean = false,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
+  selectedHeight: number = 0
 ): DownloadHandle {
   const ext = asAudio ? 'mp3' : 'mp4';
   // Sanitize filename for the filesystem
   const safeFilename = filename.replace(/[/\\:*?"<>|]/g, '_');
   const outputPath = join(outputDir, `${safeFilename}.${ext}`);
+  // Keep fragment temp files out of the user's download folder
+  const fragTmpDir = join(tmpdir(), `vdl-${Date.now()}`);
 
   const args: string[] = [];
 
@@ -101,12 +109,19 @@ export function downloadM3u8(
     args.push('--add-header', `${k}:${v}`);
   }
 
+  // Format selection — lets yt-dlp merge video+audio from master playlist
+  if (selectedHeight > 0) {
+    args.push('-f', `bestvideo[height<=${selectedHeight}]+bestaudio/best[height<=${selectedHeight}]/best`);
+  }
+
   args.push(
-    '--concurrent-fragments', '16',  // Download 16 HLS segments in parallel
+    '--concurrent-fragments', '16',
     '--newline',
     '--ffmpeg-location', FFMPEG_DIR,
     '--no-playlist',
-    '-o', outputPath,
+    '-P', `home:${outputDir}`,   // Final file goes here
+    '-P', `temp:${fragTmpDir}`,  // Fragment temp files go here (kept out of downloads)
+    '-o', `${safeFilename}.${ext}`,
   );
 
   if (asAudio) {
@@ -122,6 +137,7 @@ export function downloadM3u8(
   return {
     process: proc,
     cancel: () => proc.kill(),
+    outputPath,
   };
 }
 

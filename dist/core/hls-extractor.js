@@ -22,6 +22,8 @@ export async function extractM3u8Url(pageUrl, timeoutMs = 30000) {
             '--disable-extensions',
             '--disable-sync',
             '--mute-audio',
+            '--autoplay-policy=no-user-gesture-required',
+            '--disable-web-security',
             '--user-data-dir=' + (process.env['TMPDIR'] ?? '/tmp') + '/vdl-cdp-' + Date.now(),
             'about:blank',
         ], {
@@ -65,6 +67,31 @@ export async function extractM3u8Url(pageUrl, timeoutMs = 30000) {
                     resolve(result);
                 }
             };
+            // JS snippet injected after page load to trigger video playback
+            const autoPlayScript = `(function() {
+        // Force play on any video elements
+        document.querySelectorAll('video').forEach(function(v) {
+          v.muted = true;
+          try { v.play(); } catch(e) {}
+        });
+        // Click common play button selectors
+        var sels = [
+          '.vjs-big-play-button', '.jw-icon-display', '.plyr__control--overlaid',
+          '[class*="play-btn"]', '[class*="playbtn"]', '[class*="play_btn"]',
+          '[class*="PlayButton"]', '[class*="play-button"]', '[class*="btnPlay"]',
+          '[id*="play"]', 'button[aria-label*="play" i]', '[data-role="play"]',
+          '.play', '.play-icon', '.fas.fa-play', '.fa-play',
+        ];
+        sels.forEach(function(s) {
+          document.querySelectorAll(s).forEach(function(el) {
+            try { el.click(); } catch(e) {}
+          });
+        });
+        // Scan page source for m3u8 URLs and return them
+        var src = document.documentElement.innerHTML;
+        var matches = src.match(/https?:[^"' \\\\]+\\.m3u8[^"' \\\\]*/g);
+        return matches ? matches[0] : null;
+      })()`;
             ws.on('open', () => {
                 send('Target.setAutoAttach', {
                     autoAttach: true,
@@ -72,6 +99,8 @@ export async function extractM3u8Url(pageUrl, timeoutMs = 30000) {
                     flatten: true,
                 });
                 send('Network.enable');
+                send('Page.enable');
+                send('Runtime.enable');
                 send('Page.navigate', { url: pageUrl });
             });
             // Store headers from requestWillBeSent keyed by URL
@@ -79,43 +108,54 @@ export async function extractM3u8Url(pageUrl, timeoutMs = 30000) {
             ws.on('message', (data) => {
                 try {
                     const msg = JSON.parse(data.toString());
-                    // Enable network on any attached iframe
+                    // Enable network on any attached iframe target
                     if (msg.method === 'Target.attachedToTarget') {
                         const sid = msg.params?.sessionId;
                         if (sid) {
-                            ws.send(JSON.stringify({
-                                id: msgId++,
-                                method: 'Network.enable',
-                                params: {},
-                                sessionId: sid,
-                            }));
+                            ws.send(JSON.stringify({ id: msgId++, method: 'Network.enable', params: {}, sessionId: sid }));
+                            ws.send(JSON.stringify({ id: msgId++, method: 'Page.enable', params: {}, sessionId: sid }));
+                        }
+                    }
+                    // After DOM is ready — click play buttons and scan DOM for m3u8 URLs
+                    if (msg.method === 'Page.domContentEventFired' || msg.method === 'Page.loadEventFired') {
+                        // Run in main frame AND any sub-session (iframe)
+                        const sid = msg.sessionId;
+                        ws.send(JSON.stringify({
+                            id: msgId++,
+                            method: 'Runtime.evaluate',
+                            params: { expression: autoPlayScript, awaitPromise: false, returnByValue: true },
+                            ...(sid ? { sessionId: sid } : {}),
+                        }));
+                    }
+                    // Capture result of Runtime.evaluate (DOM-embedded m3u8 URL)
+                    if (msg.result?.result?.value && typeof msg.result.result.value === 'string') {
+                        const embeddedUrl = msg.result.result.value;
+                        if (embeddedUrl.includes('.m3u8')) {
+                            found(embeddedUrl, {});
                         }
                     }
                     // Capture headers from requests (requestWillBeSent has full headers)
                     if (msg.method === 'Network.requestWillBeSent') {
-                        const url = msg.params?.request?.url ?? '';
+                        const reqUrl = msg.params?.request?.url ?? '';
                         const headers = msg.params?.request?.headers ?? {};
-                        // Store headers for later matching
-                        requestHeaders.set(url, headers);
-                        if (url.includes('.m3u8')) {
-                            found(url, headers);
+                        requestHeaders.set(reqUrl, headers);
+                        if (reqUrl.includes('.m3u8')) {
+                            found(reqUrl, headers);
                         }
                     }
                     // Check response content-type for HLS streams (catches non-.m3u8 URLs)
                     if (msg.method === 'Network.responseReceived') {
-                        const url = msg.params?.response?.url ?? '';
+                        const respUrl = msg.params?.response?.url ?? '';
                         const contentType = (msg.params?.response?.headers?.['content-type'] ??
                             msg.params?.response?.headers?.['Content-Type'] ??
                             '');
-                        // Use stored request headers, or fall back to response requestHeaders
-                        const headers = requestHeaders.get(url) ??
-                            msg.params?.response?.requestHeaders ?? {};
-                        if (url.includes('.m3u8')) {
-                            found(url, headers);
+                        const headers = requestHeaders.get(respUrl) ?? msg.params?.response?.requestHeaders ?? {};
+                        if (respUrl.includes('.m3u8')) {
+                            found(respUrl, headers);
                         }
                         if (contentType.includes('application/vnd.apple.mpegurl') ||
                             contentType.includes('application/x-mpegurl')) {
-                            found(url, headers);
+                            found(respUrl, headers);
                         }
                     }
                 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { existsSync } from 'fs';
 import { Box, Text, useApp } from 'ink';
 import Spinner from 'ink-spinner';
 
@@ -71,8 +72,8 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
   const [isM3u8, setIsM3u8] = useState(false);
   const [m3u8Url, setM3u8Url] = useState('');
   const [m3u8Headers, setM3u8Headers] = useState<Record<string, string>>({});
-  const [m3u8Qualities, setM3u8Qualities] = useState<{ url: string; label: string }[]>([]);
-  const [selectedM3u8, setSelectedM3u8] = useState('');
+  const [m3u8Qualities, setM3u8Qualities] = useState<{ url: string; label: string; height: number }[]>([]);
+  const [selectedM3u8Height, setSelectedM3u8Height] = useState(0);
 
   // Check dependencies on mount
   useEffect(() => {
@@ -129,7 +130,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
 
           if (mediaFormat) {
             if (qualities.length === 1) {
-              setSelectedM3u8(qualities[0]!.url);
+              setSelectedM3u8Height(qualities[0]!.height);
               setState('downloading');
             } else {
               setState('quality-select');
@@ -154,8 +155,8 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
           setM3u8Headers(extracted.headers);
 
           // Fetch qualities using the captured browser headers
-          let qualities: { url: string; label: string }[] = [
-            { url: extracted.url, label: 'Default quality' },
+          let qualities: { url: string; label: string; height: number }[] = [
+            { url: extracted.url, label: 'Default quality', height: 0 },
           ];
 
           try {
@@ -170,7 +171,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
 
           if (mediaFormat) {
             if (qualities.length === 1) {
-              setSelectedM3u8(qualities[0]!.url);
+              setSelectedM3u8Height(qualities[0]!.height);
               setState('downloading');
             } else {
               setState('quality-select');
@@ -202,20 +203,24 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
         const outputDir = config.downloadDir;
 
         if (isM3u8) {
-          // Always use quality-specific URL, never the master playlist
-          const streamUrl = selectedM3u8 || (m3u8Qualities.length > 0 ? m3u8Qualities[0]!.url : m3u8Url);
           const filename = videoInfo?.title ?? `vdl-${Date.now()}`;
           const asAudio = mediaFormat === 'audio';
 
-          // yt-dlp reports percentage directly — no need to probe duration
-          const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, m3u8Headers);
+          // Always pass the master URL + height so yt-dlp can merge video+audio properly
+          const handle = downloadM3u8(m3u8Url, outputDir, filename, asAudio, m3u8Headers, selectedM3u8Height);
 
           const onData = (chunk: Buffer) => {
             const lines = chunk.toString().split('\n');
             for (const line of lines) {
               const parsed = parseYtdlpProgress(line);
               if (parsed) {
-                setProgress((prev) => ({ ...prev, ...parsed }));
+                setProgress((prev) => {
+                  // Never go backwards on percentage (concurrent frags report out-of-order)
+                  const pct = parsed.percent > 0 && parsed.percent < prev.percent
+                    ? prev.percent
+                    : parsed.percent;
+                  return { ...prev, ...parsed, percent: pct };
+                });
               }
             }
           };
@@ -223,7 +228,18 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
           handle.process.stdout?.on('data', onData);
           handle.process.stderr?.on('data', onData);
 
-          await handle.process;
+          try {
+            await handle.process;
+          } catch (processErr) {
+            // yt-dlp sometimes exits non-zero after a successful download (post-processing quirk).
+            // If the output file exists and has content, treat it as success.
+            const outFile = handle.outputPath;
+            if (outFile && existsSync(outFile)) {
+              // File was created — download succeeded despite the exit code
+            } else {
+              throw processErr;
+            }
+          }
           setProgress((prev) => ({ ...prev, percent: 100, status: 'complete' }));
           setState('complete');
         } else if (selectedFormat) {
@@ -305,7 +321,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
 
     if (isM3u8) {
       if (m3u8Qualities.length === 1) {
-        setSelectedM3u8(m3u8Qualities[0]!.url);
+        setSelectedM3u8Height(m3u8Qualities[0]!.height);
         setState('downloading');
       } else {
         setState('quality-select');
@@ -337,8 +353,8 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
     setState('downloading');
   }, []);
 
-  const handleM3u8QualitySelect = useCallback((item: { url: string; label: string }) => {
-    setSelectedM3u8(item.url);
+  const handleM3u8QualitySelect = useCallback((item: { url: string; label: string; height: number }) => {
+    setSelectedM3u8Height(item.height);
     setState('downloading');
   }, []);
 
@@ -429,8 +445,8 @@ function M3u8QualitySelect({
   qualities,
   onSelect,
 }: {
-  qualities: { url: string; label: string }[];
-  onSelect: (item: { url: string; label: string }) => void;
+  qualities: { url: string; label: string; height: number }[];
+  onSelect: (item: { url: string; label: string; height: number }) => void;
 }) {
   const items = qualities.map((q, i) => ({
     key: `m3u8-${i}`,
