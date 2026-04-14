@@ -102,7 +102,7 @@ export function downloadM3u8(
   }
 
   args.push(
-    '--concurrent-fragments', '5',  // Download 5 HLS segments in parallel
+    '--concurrent-fragments', '16',  // Download 16 HLS segments in parallel
     '--newline',
     '--ffmpeg-location', FFMPEG_DIR,
     '--no-playlist',

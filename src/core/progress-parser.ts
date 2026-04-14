@@ -72,6 +72,22 @@ export function parseYtdlpProgress(line: string): DownloadProgress | null {
     };
   }
 
+  // Match fragment progress: [download] Got frag 45/200 or Downloading fragment 45 of 200
+  const fragMatch = line.match(/(?:Got frag|Downloading fragment)\s+(\d+)\s+(?:\/|of)\s+(\d+)/);
+  if (fragMatch) {
+    const current = parseInt(fragMatch[1]!, 10);
+    const total = parseInt(fragMatch[2]!, 10);
+    const percent = total > 0 ? Math.round((current / total) * 100 * 10) / 10 : 0;
+    return {
+      percent,
+      total: `${total} frags`,
+      speed: '',
+      eta: '',
+      downloaded: `${current}/${total}`,
+      status: 'downloading',
+    };
+  }
+
   return null;
 }
 

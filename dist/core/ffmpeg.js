@@ -68,7 +68,7 @@ export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, head
     for (const [k, v] of headerEntries) {
         args.push('--add-header', `${k}:${v}`);
     }
-    args.push('--concurrent-fragments', '5', // Download 5 HLS segments in parallel
+    args.push('--concurrent-fragments', '16', // Download 16 HLS segments in parallel
     '--newline', '--ffmpeg-location', FFMPEG_DIR, '--no-playlist', '-o', outputPath);
     if (asAudio) {
         args.push('-x', '--audio-format', 'mp3');

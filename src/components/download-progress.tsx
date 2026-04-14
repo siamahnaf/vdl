@@ -59,10 +59,10 @@ export default function DownloadProgressView({ progress, title, isStream = false
         <Text color="white" bold>{displayTitle}</Text>
       </Box>
 
-      {/* Progress bar — different for stream vs normal */}
+      {/* Progress bar — show real % if available, streaming bar only as fallback */}
       <Box marginLeft={1} marginTop={1}>
         <Text>  </Text>
-        {isStream ? (
+        {isStream && progress.percent <= 0 ? (
           <>
             <StreamBar />
             <Text bold color="cyan"> streaming</Text>
