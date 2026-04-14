@@ -110,8 +110,8 @@ export function downloadM3u8(
 
   args.push(
     '--concurrent-fragments', '16',
-    '--retries', '10',
-    '--fragment-retries', '10',
+    '--retries', 'inf',
+    '--fragment-retries', 'inf',
     '--no-abort-on-error',
     '--newline',
     '--ffmpeg-location', FFMPEG_DIR,
@@ -119,8 +119,9 @@ export function downloadM3u8(
     '-P', `home:${outputDir}`,
     '-P', `temp:${fragTmpDir}`,
     '-o', `${safeFilename}.${ext}`,
-    // 'ffmpeg:' applies to ALL ffmpeg-based PPs (FixupM3u8, Merger, etc.)
-    '--ppa', 'ffmpeg:-max_muxing_queue_size 9999 -movflags +faststart',
+    // -fflags +genpts: regenerate PTS from DTS so non-monotonic timestamps at
+    // HLS fragment boundaries don't cause ffmpeg to drop packets (fixes duration truncation).
+    '--ppa', 'ffmpeg:-fflags +genpts -max_muxing_queue_size 9999 -movflags +faststart',
   );
 
   if (asAudio) {
