@@ -234,7 +234,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                         handle = downloadAudio(url, selectedFormat.formatId, outputDir, noPlaylist);
                     }
                     else {
-                        handle = downloadVideo(url, selectedFormat.formatId, outputDir, noPlaylist);
+                        handle = downloadVideo(url, selectedFormat, outputDir, noPlaylist);
                     }
                     handle.process.stdout?.on('data', (chunk) => {
                         const lines = chunk.toString().split('\n');

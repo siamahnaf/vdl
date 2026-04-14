@@ -1,5 +1,5 @@
 import { type ResultPromise } from 'execa';
-import type { VideoInfo } from '../types/video.js';
+import type { VideoFormat, VideoInfo } from '../types/video.js';
 /**
  * Check if a URL contains a playlist.
  */
@@ -10,7 +10,7 @@ export interface DownloadHandle {
     cancel: () => void;
     outputPath?: string;
 }
-export declare function downloadVideo(url: string, formatId: string, outputDir: string, noPlaylist?: boolean, outputTemplate?: string): DownloadHandle;
+export declare function downloadVideo(url: string, format: VideoFormat, outputDir: string, noPlaylist?: boolean, outputTemplate?: string): DownloadHandle;
 export declare function downloadAudio(url: string, formatId: string, outputDir: string, noPlaylist?: boolean, outputTemplate?: string): DownloadHandle;
 export declare function isSupported(url: string): Promise<boolean>;
 //# sourceMappingURL=ytdlp.d.ts.map

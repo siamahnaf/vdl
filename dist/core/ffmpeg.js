@@ -74,9 +74,14 @@ export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, head
     for (const [k, v] of headerEntries) {
         args.push('--add-header', `${k}:${v}`);
     }
-    args.push('--concurrent-fragments', '16', '--retries', '10', '--fragment-retries', '10', '--no-abort-on-error', '--newline', '--ffmpeg-location', FFMPEG_DIR, '--no-playlist', '-P', `home:${outputDir}`, '-P', `temp:${fragTmpDir}`, '-o', `${safeFilename}.${ext}`, 
-    // 'ffmpeg:' applies to ALL ffmpeg-based PPs (FixupM3u8, Merger, etc.)
-    '--ppa', 'ffmpeg:-max_muxing_queue_size 9999 -movflags +faststart');
+    args.push('--concurrent-fragments', '16', '--retries', 'inf', '--fragment-retries', 'inf', '--no-abort-on-error', '--newline', '--ffmpeg-location', FFMPEG_DIR, '--no-playlist', '-P', `home:${outputDir}`, '-P', `temp:${fragTmpDir}`, '-o', `${safeFilename}.${ext}`, 
+    // yt-dlp's ppa 'ffmpeg:' args go AFTER -i (output position).
+    // To fix timestamps we need args BEFORE -i (input position), so use
+    // 'FixupM3u8+ffmpeg_i:' which yt-dlp inserts before the first -i flag.
+    // +genpts+igndts: regenerate PTS/DTS from scratch — HLS fragment boundaries
+    //   produce non-monotonic DTS that causes "Error muxing a packet" in the
+    //   MP4 muxer, truncating the output file by the last N segments.
+    '--ppa', 'FixupM3u8+ffmpeg_i:-fflags +genpts+igndts', '--ppa', 'ffmpeg:-max_muxing_queue_size 9999 -movflags +faststart');
     if (asAudio) {
         args.push('-x', '--audio-format', 'mp3');
     }
