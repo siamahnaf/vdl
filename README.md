@@ -27,10 +27,12 @@ Beautiful interactive CLI for downloading videos and audio from any social media
 
 Make sure these are installed before running the install command:
 
-| Tool | macOS | Windows |
-|------|-------|---------|
-| Node.js (>=18) | [nodejs.org](https://nodejs.org) | [nodejs.org](https://nodejs.org) |
-| Python 3 | Pre-installed on macOS | [python.org](https://python.org) |
+| Tool | Minimum | Download |
+|------|---------|---------|
+| Node.js | 18+ | [nodejs.org](https://nodejs.org) |
+| Python | **3.10+** | [python.org](https://python.org) |
+
+> **Note:** macOS ships with Python 3.9 by default which is not supported. Install Python 3.10 or newer from [python.org](https://python.org) before running the installer.
 
 ## Install
 

@@ -62,12 +62,12 @@ if command -v pip3 >/dev/null 2>&1; then
   PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
   PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
   PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-  if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 9 ]; then
+  if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 10 ]; then
     echo -e "  ${GREEN}✓${RESET} ${BOLD}Python${RESET} ${DIM}(${PY_VER})${RESET}"
   else
-    echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.9+${RESET} required ${DIM}(found ${PY_VER})${RESET}"
+    echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.10+${RESET} required ${DIM}(found ${PY_VER})${RESET}"
     echo ""
-    echo -e "  ${BOLD}Please install Python 3.9 or newer:${RESET}"
+    echo -e "  ${BOLD}Please install Python 3.10 or newer:${RESET}"
     echo -e "    ${CYAN}https://python.org${RESET}"
     echo ""
     fail "Installation cancelled"
