@@ -92,13 +92,23 @@ else
 
   if pip3 install yt-dlp >/dev/null 2>&1; then
     echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(installed)${RESET}"
-    # pip may install to ~/Library/Python/X.Y/bin on macOS, which isn't in PATH by default.
+    # pip may install to a Python-specific bin dir not in PATH (e.g. ~/Library/Python/3.9/bin).
+    # --user-scripts flag only exists in Python 3.10+; use getuserbase() which works on 3.9+.
     # Copy the binary to $BIN_DIR so vdl can find it.
     if ! command -v yt-dlp >/dev/null 2>&1; then
-      PY_SCRIPTS=$(python3 -m site --user-scripts 2>/dev/null)
-      if [ -n "$PY_SCRIPTS" ] && [ -f "$PY_SCRIPTS/yt-dlp" ]; then
+      YTDLP_FOUND=""
+      for _candidate_dir in \
+        "$(python3 -c 'import site, os; print(os.path.join(site.getuserbase(), "bin"))' 2>/dev/null)" \
+        "$(python3 -c 'import sys, os; print(os.path.join(sys.prefix, "bin"))' 2>/dev/null)" \
+        "$HOME/.local/bin"; do
+        if [ -n "$_candidate_dir" ] && [ -f "$_candidate_dir/yt-dlp" ]; then
+          YTDLP_FOUND="$_candidate_dir/yt-dlp"
+          break
+        fi
+      done
+      if [ -n "$YTDLP_FOUND" ]; then
         mkdir -p "$BIN_DIR"
-        cp "$PY_SCRIPTS/yt-dlp" "$BIN_DIR/yt-dlp"
+        cp "$YTDLP_FOUND" "$BIN_DIR/yt-dlp"
         chmod 755 "$BIN_DIR/yt-dlp"
       fi
     fi
