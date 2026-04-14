@@ -64,6 +64,8 @@ if command -v pip3 >/dev/null 2>&1; then
   PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
   if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 10 ]; then
     echo -e "  ${GREEN}✓${RESET} ${BOLD}Python${RESET} ${DIM}(${PY_VER})${RESET}"
+    # Fix SSL certificates (common macOS issue — Python lacks certs by default)
+    pip3 install -q --upgrade certifi >/dev/null 2>&1 || true
   else
     echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.10+${RESET} required ${DIM}(found ${PY_VER})${RESET}"
     echo ""
