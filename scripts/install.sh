@@ -92,6 +92,16 @@ else
 
   if pip3 install yt-dlp >/dev/null 2>&1; then
     echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(installed)${RESET}"
+    # pip may install to ~/Library/Python/X.Y/bin on macOS, which isn't in PATH by default.
+    # Copy the binary to $BIN_DIR so vdl can find it.
+    if ! command -v yt-dlp >/dev/null 2>&1; then
+      PY_SCRIPTS=$(python3 -m site --user-scripts 2>/dev/null)
+      if [ -n "$PY_SCRIPTS" ] && [ -f "$PY_SCRIPTS/yt-dlp" ]; then
+        mkdir -p "$BIN_DIR"
+        cp "$PY_SCRIPTS/yt-dlp" "$BIN_DIR/yt-dlp"
+        chmod 755 "$BIN_DIR/yt-dlp"
+      fi
+    fi
   else
     fail "Could not install yt-dlp. Please try again."
   fi

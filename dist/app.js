@@ -17,7 +17,6 @@ import { loadConfig, saveConfig } from './config/store.js';
 import { getVideoInfo, downloadVideo, downloadAudio, isPlaylistUrl } from './core/ytdlp.js';
 import { analyzeUrl } from './core/url-analyzer.js';
 import { getM3u8Qualities, downloadM3u8, getStreamDuration } from './core/ffmpeg.js';
-import { extractM3u8Url, getBrowserName } from './core/hls-extractor.js';
 import { parseYtdlpProgress, parseFfmpegProgress } from './core/progress-parser.js';
 export default function App({ initialUrl, flagAudio, flagQuality }) {
     const { exit } = useApp();
@@ -44,7 +43,6 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
     // --- M3U8-specific state ---
     const [isM3u8, setIsM3u8] = useState(false);
     const [m3u8Url, setM3u8Url] = useState('');
-    const [m3u8Headers, setM3u8Headers] = useState({});
     const [m3u8Qualities, setM3u8Qualities] = useState([]);
     const [selectedM3u8, setSelectedM3u8] = useState('');
     // Check dependencies on mount
@@ -113,46 +111,6 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                         setState('format-select');
                     }
                 }
-                else if (analysis.type === 'needs-extraction') {
-                    const browserName = getBrowserName();
-                    setAnalyzeMsg(`Searching for video stream using ${browserName}...`);
-                    const extracted = await extractM3u8Url(url);
-                    if (!extracted) {
-                        setErrorMsg('Could not find a video on this page');
-                        setErrorHint('The video may be protected or the site may not be supported');
-                        setState('error');
-                        return;
-                    }
-                    setIsM3u8(true);
-                    setM3u8Url(extracted.url);
-                    setM3u8Headers(extracted.headers);
-                    // Fetch qualities using the captured browser headers
-                    let qualities = [
-                        { url: extracted.url, label: 'Default quality' },
-                    ];
-                    try {
-                        const fetchedQualities = await getM3u8Qualities(extracted.url, extracted.headers);
-                        if (fetchedQualities.length > 0) {
-                            qualities = fetchedQualities;
-                        }
-                    }
-                    catch {
-                        // Use default quality
-                    }
-                    setM3u8Qualities(qualities);
-                    if (mediaFormat) {
-                        if (qualities.length === 1) {
-                            setSelectedM3u8(qualities[0].url);
-                            setState('downloading');
-                        }
-                        else {
-                            setState('quality-select');
-                        }
-                    }
-                    else {
-                        setState('format-select');
-                    }
-                }
                 else {
                     setErrorMsg('This URL is not supported');
                     setErrorHint('Make sure the URL is correct and try again');
@@ -180,7 +138,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                     const filename = videoInfo?.title ?? `vdl-${Date.now()}`;
                     const asAudio = mediaFormat === 'audio';
                     const totalDuration = await getStreamDuration(streamUrl);
-                    const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, m3u8Headers);
+                    const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, {});
                     const onFfmpegData = (chunk) => {
                         const lines = chunk.toString().split('\n');
                         for (const line of lines) {

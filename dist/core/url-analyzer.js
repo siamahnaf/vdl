@@ -1,5 +1,4 @@
 import { isSupported } from './ytdlp.js';
-import { isBrowserAvailable } from './hls-extractor.js';
 export async function analyzeUrl(url) {
     // Direct m3u8 URL
     if (url.includes('.m3u8')) {
@@ -9,10 +8,6 @@ export async function analyzeUrl(url) {
     const ytdlpSupported = await isSupported(url);
     if (ytdlpSupported) {
         return { type: 'ytdlp', url };
-    }
-    // If a Chromium browser is available, we can try extracting m3u8
-    if (isBrowserAvailable()) {
-        return { type: 'needs-extraction', url };
     }
     return { type: 'unknown', url };
 }
