@@ -57,11 +57,36 @@ else
   fail "Installation cancelled"
 fi
 
-# --- yt-dlp (native binary from GitHub releases — no Python required) ---
+# --- Python 3.10+ (required by yt-dlp) ---
+PYTHON_OK=false
+for cmd in python3 python; do
+  if command -v "$cmd" >/dev/null 2>&1; then
+    PY_VER=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+    PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+    PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+    if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 10 ]; then
+      echo -e "  ${GREEN}✓${RESET} ${BOLD}Python${RESET} ${DIM}(${PY_VER})${RESET}"
+      PYTHON_OK=true
+      break
+    fi
+  fi
+done
+
+if [ "$PYTHON_OK" = false ]; then
+  echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.10+${RESET} not found"
+  echo ""
+  echo -e "  ${BOLD}Please install Python 3.10 or newer:${RESET}"
+  echo -e "    ${CYAN}https://python.org${RESET}"
+  echo ""
+  echo -e "  ${DIM}Then re-run this installer.${RESET}"
+  fail "Installation cancelled"
+fi
+
+# --- yt-dlp (native binary — supports yt-dlp -U self-update, always latest) ---
+# pip3 is stuck at an old PyPI version; binary download gets latest and allows self-update
 echo -e "  ${CYAN}↓${RESET} Fetching latest yt-dlp..."
 mkdir -p "$BIN_DIR"
 
-# Pick the right native binary for the platform
 UNAME=$(uname -s)
 ARCH=$(uname -m)
 case "${UNAME}-${ARCH}" in
