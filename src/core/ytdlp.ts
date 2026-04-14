@@ -160,11 +160,21 @@ export function downloadVideo(
   // H.264 stream at or below the requested resolution — even if that means a lower
   // resolution — because a working 720p beats a broken 1080p AV1 on iOS.
   const h = format.height > 0 ? format.height : 2160;
-  const h264Selector = `bestvideo[vcodec^=avc][height<=${h}]+bestaudio[ext=m4a]/bestvideo[vcodec^=avc][height<=${h}]+bestaudio[acodec=aac]/bestvideo[vcodec^=avc][height<=${h}]+bestaudio`;
+  // Two kinds of H.264 streams exist across platforms:
+  //   1. Separate video-only track (YouTube DASH) → bestvideo[vcodec^=avc]
+  //   2. Combined video+audio track (Facebook/Instagram) → best[vcodec^=avc]
+  // We must try both or Facebook will fall through to the AV1 format.
+  const h264Selector = [
+    `bestvideo[vcodec^=avc][height<=${h}]+bestaudio[ext=m4a]`,   // YouTube: separate H.264+AAC
+    `bestvideo[vcodec^=avc][height<=${h}]+bestaudio[acodec=aac]`,
+    `bestvideo[vcodec^=avc][height<=${h}]+bestaudio`,
+    `best[vcodec^=avc][height<=${h}]`,                            // Facebook: combined H.264 stream
+    `best[vcodec^=avc]`,                                          // any combined H.264 fallback
+  ].join('/');
   const fallbackSelector = `${format.formatId}+bestaudio[ext=m4a]/${format.formatId}+bestaudio[acodec=aac]/${format.formatId}+bestaudio/best`;
   const formatStr = isH264(format.vcodec)
-    ? fallbackSelector   // already H.264 — use exact format ID
-    : `${h264Selector}/${fallbackSelector}`;  // prefer H.264, fall back to original
+    ? fallbackSelector
+    : `${h264Selector}/${fallbackSelector}`;
 
   const args = [
     '-f', formatStr,
