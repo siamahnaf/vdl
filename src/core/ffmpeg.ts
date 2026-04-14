@@ -119,9 +119,11 @@ export function downloadM3u8(
     '-P', `home:${outputDir}`,
     '-P', `temp:${fragTmpDir}`,
     '-o', `${safeFilename}.${ext}`,
-    // -fflags +genpts: regenerate PTS from DTS so non-monotonic timestamps at
-    // HLS fragment boundaries don't cause ffmpeg to drop packets (fixes duration truncation).
-    '--ppa', 'ffmpeg:-fflags +genpts -max_muxing_queue_size 9999 -movflags +faststart',
+    // +genpts: regenerate PTS from DTS
+    // +igndts: ignore incoming DTS — at HLS fragment boundaries DTS resets or goes
+    //   backwards, causing "Error muxing a packet" which truncates the output file.
+    //   Ignoring DTS and deriving it from PTS gives ffmpeg a clean monotonic sequence.
+    '--ppa', 'ffmpeg:-fflags +genpts+igndts -max_muxing_queue_size 9999 -movflags +faststart',
   );
 
   if (asAudio) {
