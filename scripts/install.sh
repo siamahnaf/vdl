@@ -57,33 +57,9 @@ else
   fail "Installation cancelled"
 fi
 
-# --- Python 3.10+ (required by yt-dlp) ---
-PYTHON_OK=false
-for cmd in python3 python; do
-  if command -v "$cmd" >/dev/null 2>&1; then
-    PY_VER=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-    PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
-    PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-    if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 10 ]; then
-      echo -e "  ${GREEN}✓${RESET} ${BOLD}Python${RESET} ${DIM}(${PY_VER})${RESET}"
-      PYTHON_OK=true
-      break
-    fi
-  fi
-done
-
-if [ "$PYTHON_OK" = false ]; then
-  echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.10+${RESET} not found"
-  echo ""
-  echo -e "  ${BOLD}Please install Python 3.10 or newer:${RESET}"
-  echo -e "    ${CYAN}https://python.org${RESET}"
-  echo ""
-  echo -e "  ${DIM}Then re-run this installer.${RESET}"
-  fail "Installation cancelled"
-fi
-
 # --- yt-dlp (native binary — supports yt-dlp -U self-update, always latest) ---
-# pip3 is stuck at an old PyPI version; binary download gets latest and allows self-update
+# macOS and Linux use standalone native binaries — no Python required
+# Other platforms fall back to Python zipapp (requires Python 3.10+)
 echo -e "  ${CYAN}↓${RESET} Fetching latest yt-dlp..."
 mkdir -p "$BIN_DIR"
 
@@ -93,7 +69,30 @@ case "${UNAME}-${ARCH}" in
   Darwin-*)                      YTDLP_BIN="yt-dlp_macos" ;;
   Linux-aarch64|Linux-arm64)     YTDLP_BIN="yt-dlp_linux_aarch64" ;;
   Linux-*)                       YTDLP_BIN="yt-dlp_linux" ;;
-  *)                             YTDLP_BIN="yt-dlp" ;;
+  *)
+    # Python zipapp fallback — requires Python 3.10+
+    PYTHON_OK=false
+    for cmd in python3 python; do
+      if command -v "$cmd" >/dev/null 2>&1; then
+        PY_VER=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+        PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+        PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+        if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 10 ]; then
+          PYTHON_OK=true
+          break
+        fi
+      fi
+    done
+    if [ "$PYTHON_OK" = false ]; then
+      echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.10+${RESET} required on this platform"
+      echo ""
+      echo -e "  ${BOLD}Please install Python 3.10 or newer:${RESET}"
+      echo -e "    ${CYAN}https://python.org${RESET}"
+      echo ""
+      fail "Installation cancelled"
+    fi
+    YTDLP_BIN="yt-dlp"
+    ;;
 esac
 
 YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_BIN}"
