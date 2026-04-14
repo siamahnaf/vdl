@@ -1,4 +1,5 @@
 import type { DownloadProgress } from '../types/video.js';
+export declare function formatTime(seconds: number): string;
 /**
  * Parse a single line of yt-dlp progress output (with --newline flag).
  * Example lines:

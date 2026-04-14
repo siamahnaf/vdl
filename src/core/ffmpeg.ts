@@ -45,7 +45,7 @@ export function parseMasterPlaylist(content: string, baseUrl: string): M3u8Quali
           url: streamUrl,
           resolution,
           bandwidth,
-          label: height ? `${height}p` : resolution,
+          label: height ? resolution : 'Unknown',  // Show full resolution e.g. "1920×804"
           height,
         });
       }
@@ -112,23 +112,24 @@ export function downloadM3u8(
     '--concurrent-fragments', '16',
     '--retries', '10',
     '--fragment-retries', '10',
-    '--no-abort-on-error',
     '--newline',
     '--ffmpeg-location', FFMPEG_DIR,
     '--no-playlist',
     '-P', `home:${outputDir}`,   // Final file goes here
     '-P', `temp:${fragTmpDir}`,  // Fragment temp files go here (kept out of downloads)
     '-o', `${safeFilename}.${ext}`,
+    // FixupM3u8 is the post-processor yt-dlp uses for single-stream HLS (not Merger).
+    // _i = input args, regenerate PTS to fix timestamp gaps at segment boundaries.
+    '--ppa', 'FixupM3u8_i:-fflags +genpts',
+    '--ppa', 'FixupM3u8:-max_muxing_queue_size 9999',
+    // Also cover the Merger PP in case yt-dlp uses it for separate audio tracks.
+    '--ppa', 'Merger:-max_muxing_queue_size 9999',
   );
 
   if (asAudio) {
     args.push('-x', '--audio-format', 'mp3');
   } else {
-    args.push(
-      '--merge-output-format', 'mp4',
-      // Increase ffmpeg muxing queue to prevent truncation on long streams
-      '--ppa', 'ffmpeg:-max_muxing_queue_size 9999',
-    );
+    args.push('--merge-output-format', 'mp4');
   }
 
   args.push(m3u8Url);

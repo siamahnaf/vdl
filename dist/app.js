@@ -17,9 +17,9 @@ import { checkDependencies } from './utils/dependency-check.js';
 import { loadConfig, saveConfig } from './config/store.js';
 import { getVideoInfo, downloadVideo, downloadAudio, isPlaylistUrl } from './core/ytdlp.js';
 import { analyzeUrl } from './core/url-analyzer.js';
-import { getM3u8Qualities, downloadM3u8 } from './core/ffmpeg.js';
+import { getM3u8Qualities, downloadM3u8, getStreamDuration } from './core/ffmpeg.js';
 import { extractM3u8Url, getBrowserName } from './core/hls-extractor.js';
-import { parseYtdlpProgress } from './core/progress-parser.js';
+import { parseYtdlpProgress, formatTime } from './core/progress-parser.js';
 export default function App({ initialUrl, flagAudio, flagQuality }) {
     const { exit } = useApp();
     const [state, setState] = useState('checking-deps');
@@ -183,6 +183,8 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                     const asAudio = mediaFormat === 'audio';
                     // Pass the specific quality stream URL (already has video+audio muxed for HLS)
                     const streamUrl = selectedM3u8 || m3u8Url;
+                    // Probe total duration so we can show elapsed video time instead of raw percentage
+                    const totalDurSec = await getStreamDuration(streamUrl);
                     const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, m3u8Headers);
                     const onData = (chunk) => {
                         const lines = chunk.toString().split('\n');
@@ -194,7 +196,14 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                                     const pct = parsed.percent > 0 && parsed.percent < prev.percent
                                         ? prev.percent
                                         : parsed.percent;
-                                    return { ...prev, ...parsed, percent: pct };
+                                    // Show elapsed video time (e.g. "45:23 / 1:38:09") when duration is known
+                                    let downloaded = parsed.downloaded;
+                                    let total = parsed.total;
+                                    if (totalDurSec > 0 && pct > 0) {
+                                        downloaded = formatTime(Math.floor((pct / 100) * totalDurSec));
+                                        total = formatTime(totalDurSec);
+                                    }
+                                    return { ...prev, ...parsed, percent: pct, downloaded, total };
                                 });
                             }
                         }
