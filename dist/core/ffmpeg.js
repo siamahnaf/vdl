@@ -74,14 +74,9 @@ export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, head
     for (const [k, v] of headerEntries) {
         args.push('--add-header', `${k}:${v}`);
     }
-    args.push('--concurrent-fragments', '16', '--retries', '10', '--fragment-retries', '10', '--newline', '--ffmpeg-location', FFMPEG_DIR, '--no-playlist', '-P', `home:${outputDir}`, // Final file goes here
-    '-P', `temp:${fragTmpDir}`, // Fragment temp files go here (kept out of downloads)
-    '-o', `${safeFilename}.${ext}`, 
-    // FixupM3u8 is the post-processor yt-dlp uses for single-stream HLS (not Merger).
-    // _i = input args, regenerate PTS to fix timestamp gaps at segment boundaries.
-    '--ppa', 'FixupM3u8_i:-fflags +genpts', '--ppa', 'FixupM3u8:-max_muxing_queue_size 9999 -movflags +faststart', 
-    // Also cover the Merger PP in case yt-dlp uses it for separate audio tracks.
-    '--ppa', 'Merger:-max_muxing_queue_size 9999 -movflags +faststart');
+    args.push('--concurrent-fragments', '16', '--retries', '10', '--fragment-retries', '10', '--no-abort-on-error', '--newline', '--ffmpeg-location', FFMPEG_DIR, '--no-playlist', '-P', `home:${outputDir}`, '-P', `temp:${fragTmpDir}`, '-o', `${safeFilename}.${ext}`, 
+    // 'ffmpeg:' applies to ALL ffmpeg-based PPs (FixupM3u8, Merger, etc.)
+    '--ppa', 'ffmpeg:-max_muxing_queue_size 9999 -movflags +faststart');
     if (asAudio) {
         args.push('-x', '--audio-format', 'mp3');
     }
@@ -108,6 +103,25 @@ export async function getStreamDuration(url) {
             url,
         ], { timeout: 30000 });
         return parseFloat(stdout.trim()) || 0;
+    }
+    catch {
+        return 0;
+    }
+}
+/**
+ * Parse total duration from an HLS media playlist by summing #EXTINF values.
+ * Unlike ffprobe, this works with authenticated streams because it uses the
+ * same headers the browser captured.
+ */
+export async function getM3u8PlaylistDuration(m3u8Url, headers = {}) {
+    try {
+        const res = await fetch(m3u8Url, { headers });
+        const text = await res.text();
+        let total = 0;
+        for (const match of text.matchAll(/#EXTINF:([\d.]+)/g)) {
+            total += parseFloat(match[1]);
+        }
+        return total;
     }
     catch {
         return 0;

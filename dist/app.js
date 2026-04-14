@@ -17,7 +17,7 @@ import { checkDependencies } from './utils/dependency-check.js';
 import { loadConfig, saveConfig } from './config/store.js';
 import { getVideoInfo, downloadVideo, downloadAudio, isPlaylistUrl } from './core/ytdlp.js';
 import { analyzeUrl } from './core/url-analyzer.js';
-import { getM3u8Qualities, downloadM3u8, getStreamDuration } from './core/ffmpeg.js';
+import { getM3u8Qualities, downloadM3u8, getM3u8PlaylistDuration } from './core/ffmpeg.js';
 import { extractM3u8Url, getBrowserName } from './core/hls-extractor.js';
 import { parseYtdlpProgress, formatTime } from './core/progress-parser.js';
 export default function App({ initialUrl, flagAudio, flagQuality }) {
@@ -183,8 +183,9 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                     const asAudio = mediaFormat === 'audio';
                     // Pass the specific quality stream URL (already has video+audio muxed for HLS)
                     const streamUrl = selectedM3u8 || m3u8Url;
-                    // Probe total duration so we can show elapsed video time instead of raw percentage
-                    const totalDurSec = await getStreamDuration(streamUrl);
+                    // Parse duration from the playlist using captured headers (ffprobe won't work
+                    // on authenticated streams, but we already have the session headers from CDP).
+                    const totalDurSec = await getM3u8PlaylistDuration(streamUrl, m3u8Headers);
                     const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, m3u8Headers);
                     const onData = (chunk) => {
                         const lines = chunk.toString().split('\n');

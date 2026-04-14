@@ -22,4 +22,10 @@ export declare function downloadM3u8(m3u8Url: string, outputDir: string, filenam
  * Get the duration of a media stream using ffprobe.
  */
 export declare function getStreamDuration(url: string): Promise<number>;
+/**
+ * Parse total duration from an HLS media playlist by summing #EXTINF values.
+ * Unlike ffprobe, this works with authenticated streams because it uses the
+ * same headers the browser captured.
+ */
+export declare function getM3u8PlaylistDuration(m3u8Url: string, headers?: Record<string, string>): Promise<number>;
 //# sourceMappingURL=ffmpeg.d.ts.map
