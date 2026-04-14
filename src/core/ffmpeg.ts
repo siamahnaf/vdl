@@ -121,9 +121,9 @@ export function downloadM3u8(
     // FixupM3u8 is the post-processor yt-dlp uses for single-stream HLS (not Merger).
     // _i = input args, regenerate PTS to fix timestamp gaps at segment boundaries.
     '--ppa', 'FixupM3u8_i:-fflags +genpts',
-    '--ppa', 'FixupM3u8:-max_muxing_queue_size 9999',
+    '--ppa', 'FixupM3u8:-max_muxing_queue_size 9999 -movflags +faststart',
     // Also cover the Merger PP in case yt-dlp uses it for separate audio tracks.
-    '--ppa', 'Merger:-max_muxing_queue_size 9999',
+    '--ppa', 'Merger:-max_muxing_queue_size 9999 -movflags +faststart',
   );
 
   if (asAudio) {

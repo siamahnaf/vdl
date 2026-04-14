@@ -145,8 +145,11 @@ export function downloadVideo(
   const outputPath = `${outputDir}/${outputTemplate}`;
 
   const args = [
-    '-f', `${formatId}+bestaudio/best`,
+    // Prefer M4A (AAC) audio — Opus/webm inside mp4 is not supported by iOS/macOS Photos
+    '-f', `${formatId}+bestaudio[ext=m4a]/${formatId}+bestaudio[acodec=aac]/${formatId}+bestaudio/best`,
     '--merge-output-format', 'mp4',
+    // Place the moov atom at the start of the file so iOS/macOS can stream/identify it
+    '--ppa', 'Merger:-movflags +faststart',
     '--newline',
     '--ffmpeg-location', FFMPEG_DIR,
     '-o', outputPath,
