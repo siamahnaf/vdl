@@ -83,23 +83,21 @@ if [ "$(uname)" = "Darwin" ]; then
   fi
 fi
 
-# --- yt-dlp (auto-install/upgrade) ---
-if command -v yt-dlp >/dev/null 2>&1; then
-  echo -e "  ${CYAN}↑${RESET} Updating yt-dlp..."
+# --- yt-dlp (always fetch latest from GitHub releases, not PyPI) ---
+# PyPI lags behind GitHub by months — GitHub is the authoritative source
+echo -e "  ${CYAN}↓${RESET} Fetching latest yt-dlp..."
+mkdir -p "$BIN_DIR"
 
-  if pip3 install -U yt-dlp >/dev/null 2>&1; then
-    YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "updated")
-    echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER})${RESET}"
-  else
-    YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "found")
-    echo -e "  ${YELLOW}!${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(could not update, using ${YTDLP_VER})${RESET}"
-  fi
+YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+
+if curl -fsSL "$YTDLP_URL" -o "$BIN_DIR/yt-dlp" 2>/dev/null && chmod +x "$BIN_DIR/yt-dlp"; then
+  YTDLP_VER=$("$BIN_DIR/yt-dlp" --version 2>/dev/null || echo "installed")
+  echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER})${RESET}"
 else
-  echo -e "  ${CYAN}↓${RESET} Installing yt-dlp..."
-
-  if pip3 install yt-dlp >/dev/null 2>&1; then
+  # Fallback to pip3 if GitHub download fails
+  if pip3 install -U yt-dlp >/dev/null 2>&1; then
     YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "installed")
-    echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER})${RESET}"
+    echo -e "  ${YELLOW}!${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER}, GitHub unavailable)${RESET}"
   else
     fail "Could not install yt-dlp. Please try again."
   fi
