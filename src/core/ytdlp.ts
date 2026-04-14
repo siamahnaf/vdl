@@ -65,6 +65,12 @@ function parseFormat(f: YtdlpFormat): VideoFormat {
   return fmt;
 }
 
+// H.264 (avc1/avc) is universally supported by iOS/macOS.
+// AV1 (av01) and VP9 (vp09) inside mp4 are NOT supported by iOS Photos.
+function isH264(vcodec: string): boolean {
+  return vcodec.startsWith('avc') || vcodec === 'h264';
+}
+
 function deduplicateFormats(formats: VideoFormat[]): VideoFormat[] {
   const seen = new Map<string, VideoFormat>();
 
@@ -78,9 +84,13 @@ function deduplicateFormats(formats: VideoFormat[]): VideoFormat[] {
     if (!existing) {
       seen.set(key, f);
     } else {
-      const preferMp4 = f.extension === 'mp4' && existing.extension !== 'mp4';
-      const largerFile = f.filesize && existing.filesize && f.filesize > existing.filesize;
-      if (preferMp4 || largerFile) {
+      // H.264 wins over AV1/VP9 regardless of file size — iOS/macOS compatibility
+      const preferH264 = isH264(f.vcodec) && !isH264(existing.vcodec);
+      // Within the same codec family, prefer mp4 container then larger file
+      const sameFamily = isH264(f.vcodec) === isH264(existing.vcodec);
+      const preferMp4 = sameFamily && f.extension === 'mp4' && existing.extension !== 'mp4';
+      const largerFile = sameFamily && !!(f.filesize && existing.filesize && f.filesize > existing.filesize);
+      if (preferH264 || preferMp4 || largerFile) {
         seen.set(key, f);
       }
     }
@@ -137,18 +147,28 @@ export interface DownloadHandle {
 
 export function downloadVideo(
   url: string,
-  formatId: string,
+  format: VideoFormat,
   outputDir: string,
   noPlaylist: boolean = true,
   outputTemplate: string = '%(title)s.%(ext)s'
 ): DownloadHandle {
   const outputPath = `${outputDir}/${outputTemplate}`;
 
+  // Always target H.264 for iOS/macOS Photos compatibility.
+  // If the selected format is already H.264, use its ID directly.
+  // If it's AV1/VP9 (common on Facebook/Instagram Reels), fall back to the best
+  // H.264 stream at or below the requested resolution — even if that means a lower
+  // resolution — because a working 720p beats a broken 1080p AV1 on iOS.
+  const h = format.height > 0 ? format.height : 2160;
+  const h264Selector = `bestvideo[vcodec^=avc][height<=${h}]+bestaudio[ext=m4a]/bestvideo[vcodec^=avc][height<=${h}]+bestaudio[acodec=aac]/bestvideo[vcodec^=avc][height<=${h}]+bestaudio`;
+  const fallbackSelector = `${format.formatId}+bestaudio[ext=m4a]/${format.formatId}+bestaudio[acodec=aac]/${format.formatId}+bestaudio/best`;
+  const formatStr = isH264(format.vcodec)
+    ? fallbackSelector   // already H.264 — use exact format ID
+    : `${h264Selector}/${fallbackSelector}`;  // prefer H.264, fall back to original
+
   const args = [
-    // Prefer M4A (AAC) audio — Opus/webm inside mp4 is not supported by iOS/macOS Photos
-    '-f', `${formatId}+bestaudio[ext=m4a]/${formatId}+bestaudio[acodec=aac]/${formatId}+bestaudio/best`,
+    '-f', formatStr,
     '--merge-output-format', 'mp4',
-    // Place the moov atom at the start of the file so iOS/macOS can stream/identify it
     '--ppa', 'Merger:-movflags +faststart',
     '--newline',
     '--ffmpeg-location', FFMPEG_DIR,

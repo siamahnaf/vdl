@@ -266,7 +266,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
           if (mediaFormat === 'audio') {
             handle = downloadAudio(url, selectedFormat.formatId, outputDir, noPlaylist);
           } else {
-            handle = downloadVideo(url, selectedFormat.formatId, outputDir, noPlaylist);
+            handle = downloadVideo(url, selectedFormat, outputDir, noPlaylist);
           }
 
           handle.process.stdout?.on('data', (chunk: Buffer) => {
