@@ -165,11 +165,17 @@ export function downloadVideo(
   //   2. Combined video+audio track (Facebook/Instagram) → best[vcodec^=avc]
   // We must try both or Facebook will fall through to the AV1 format.
   const h264Selector = [
-    `bestvideo[vcodec^=avc][height<=${h}]+bestaudio[ext=m4a]`,   // YouTube: separate H.264+AAC
+    // Facebook/Instagram: combined H.264 streams labelled "hd"/"sd" — vcodec is "unknown"
+    // in yt-dlp's format list so vcodec filters can't match them; use the IDs directly.
+    'hd',
+    'sd',
+    // YouTube / generic DASH: separate H.264 video + AAC audio
+    `bestvideo[vcodec^=avc][height<=${h}]+bestaudio[ext=m4a]`,
     `bestvideo[vcodec^=avc][height<=${h}]+bestaudio[acodec=aac]`,
     `bestvideo[vcodec^=avc][height<=${h}]+bestaudio`,
-    `best[vcodec^=avc][height<=${h}]`,                            // Facebook: combined H.264 stream
-    `best[vcodec^=avc]`,                                          // any combined H.264 fallback
+    // Other platforms with combined H.264 streams
+    `best[vcodec^=avc][height<=${h}]`,
+    `best[vcodec^=avc]`,
   ].join('/');
   const fallbackSelector = `${format.formatId}+bestaudio[ext=m4a]/${format.formatId}+bestaudio[acodec=aac]/${format.formatId}+bestaudio/best`;
   const formatStr = isH264(format.vcodec)
