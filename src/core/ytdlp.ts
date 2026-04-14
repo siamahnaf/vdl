@@ -18,6 +18,7 @@ interface YtdlpFormat {
   acodec?: string;
   resolution?: string;
   format_note?: string;
+  abr?: number;
 }
 
 interface YtdlpInfo {
@@ -32,7 +33,8 @@ interface YtdlpInfo {
 function buildLabel(f: VideoFormat): string {
   const size = f.filesize ? ` ~ ${formatBytes(f.filesize)}` : '';
   if (!f.hasVideo && f.hasAudio) {
-    return `Audio only (${f.extension})${size}`;
+    const bitrateStr = f.abr ? ` ${Math.round(f.abr)}kbps` : '';
+    return `Audio only (${f.extension}${bitrateStr})${size}`;
   }
   return `${f.resolution} (${f.extension})${size}`;
 }
@@ -56,6 +58,7 @@ function parseFormat(f: YtdlpFormat): VideoFormat {
     label: '',
     hasVideo,
     hasAudio,
+    abr: f.abr ?? null,
   };
 
   fmt.label = buildLabel(fmt);
@@ -66,7 +69,10 @@ function deduplicateFormats(formats: VideoFormat[]): VideoFormat[] {
   const seen = new Map<string, VideoFormat>();
 
   for (const f of formats) {
-    const key = `${f.resolution}-${f.hasVideo}-${f.hasAudio}`;
+    // Audio-only formats: include extension + bitrate in key to preserve all quality levels
+    const key = (!f.hasVideo && f.hasAudio)
+      ? `audio-${f.extension}-${Math.round(f.abr ?? 0)}`
+      : `${f.resolution}-${f.hasVideo}-${f.hasAudio}`;
     const existing = seen.get(key);
 
     if (!existing) {
@@ -101,7 +107,9 @@ export async function getVideoInfo(url: string, noPlaylist: boolean = true): Pro
   const { stdout } = await execa('yt-dlp', args);
   const info: YtdlpInfo = JSON.parse(stdout);
 
-  const allFormats = info.formats.map(parseFormat);
+  const allFormats = info.formats
+    .filter((f) => f.ext !== 'mhtml')  // Exclude storyboard/thumbnail formats
+    .map(parseFormat);
 
   const videoFormats = deduplicateFormats(
     allFormats.filter((f) => f.hasVideo)

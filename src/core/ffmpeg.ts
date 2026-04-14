@@ -5,7 +5,8 @@ import type { DownloadHandle } from './ytdlp.js';
 
 // Use the bundled ffmpeg binary from ffmpeg-static npm package
 const FFMPEG = ffmpegStatic as string;
-const FFPROBE = join(dirname(FFMPEG), 'ffprobe');
+const FFMPEG_DIR = dirname(FFMPEG);
+const FFPROBE = join(FFMPEG_DIR, 'ffprobe');
 
 export interface M3u8Quality {
   url: string;
@@ -76,7 +77,7 @@ export async function getM3u8Qualities(
 }
 
 /**
- * Download an m3u8 stream using ffmpeg.
+ * Download an m3u8 stream using yt-dlp with concurrent fragment downloading.
  */
 export function downloadM3u8(
   m3u8Url: string,
@@ -86,42 +87,37 @@ export function downloadM3u8(
   headers: Record<string, string> = {}
 ): DownloadHandle {
   const ext = asAudio ? 'mp3' : 'mp4';
-  const outputPath = join(outputDir, `${filename}.${ext}`);
+  // Sanitize filename for the filesystem
+  const safeFilename = filename.replace(/[/\\:*?"<>|]/g, '_');
+  const outputPath = join(outputDir, `${safeFilename}.${ext}`);
 
   const args: string[] = [];
 
-  // Pass headers to ffmpeg for Cloudflare-protected streams
+  // Pass captured browser headers to yt-dlp
   const headerEntries = Object.entries(headers).filter(
     ([k]) => ['cookie', 'referer', 'origin', 'user-agent'].includes(k.toLowerCase())
   );
-  if (headerEntries.length > 0) {
-    const headerStr = headerEntries.map(([k, v]) => `${k}: ${v}`).join('\r\n');
-    args.push('-headers', headerStr + '\r\n');
+  for (const [k, v] of headerEntries) {
+    args.push('--add-header', `${k}:${v}`);
   }
 
   args.push(
-    // Multiple concurrent connections for faster segment downloads
-    '-multiple_requests', '1',
-    '-tcp_nodelay', '1',
-    // Allow faster HLS segment fetching
-    '-http_persistent', '1',
-    '-i', m3u8Url,
-    '-progress', 'pipe:1',
-    '-y',
+    '--concurrent-fragments', '5',  // Download 5 HLS segments in parallel
+    '--newline',
+    '--ffmpeg-location', FFMPEG_DIR,
+    '--no-playlist',
+    '-o', outputPath,
   );
 
   if (asAudio) {
-    args.push('-vn', '-acodec', 'libmp3lame', '-q:a', '2');
+    args.push('-x', '--audio-format', 'mp3');
   } else {
-    args.push('-c', 'copy', '-bsf:a', 'aac_adtstoasc');
+    args.push('--merge-output-format', 'mp4');
   }
 
-  // Use all CPU threads
-  args.push('-threads', '0');
+  args.push(m3u8Url);
 
-  args.push(outputPath);
-
-  const proc = execa(FFMPEG, args);
+  const proc = execa('yt-dlp', args);
 
   return {
     process: proc,

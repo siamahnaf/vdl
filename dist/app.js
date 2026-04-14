@@ -16,9 +16,9 @@ import { checkDependencies } from './utils/dependency-check.js';
 import { loadConfig, saveConfig } from './config/store.js';
 import { getVideoInfo, downloadVideo, downloadAudio, isPlaylistUrl } from './core/ytdlp.js';
 import { analyzeUrl } from './core/url-analyzer.js';
-import { getM3u8Qualities, downloadM3u8, getStreamDuration } from './core/ffmpeg.js';
+import { getM3u8Qualities, downloadM3u8 } from './core/ffmpeg.js';
 import { extractM3u8Url, getBrowserName } from './core/hls-extractor.js';
-import { parseYtdlpProgress, parseFfmpegProgress } from './core/progress-parser.js';
+import { parseYtdlpProgress } from './core/progress-parser.js';
 export default function App({ initialUrl, flagAudio, flagQuality }) {
     const { exit } = useApp();
     const [state, setState] = useState('checking-deps');
@@ -179,27 +179,19 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                     const streamUrl = selectedM3u8 || (m3u8Qualities.length > 0 ? m3u8Qualities[0].url : m3u8Url);
                     const filename = videoInfo?.title ?? `vdl-${Date.now()}`;
                     const asAudio = mediaFormat === 'audio';
-                    const totalDuration = await getStreamDuration(streamUrl);
+                    // yt-dlp reports percentage directly — no need to probe duration
                     const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, m3u8Headers);
-                    const onFfmpegData = (chunk) => {
+                    const onData = (chunk) => {
                         const lines = chunk.toString().split('\n');
                         for (const line of lines) {
-                            const parsed = parseFfmpegProgress(line, totalDuration);
+                            const parsed = parseYtdlpProgress(line);
                             if (parsed) {
-                                setProgress((prev) => ({
-                                    ...prev,
-                                    ...(parsed.percent >= 0 ? { percent: parsed.percent } : {}),
-                                    ...(parsed.percent === -2 && parsed.downloaded ? { downloaded: parsed.downloaded } : {}),
-                                    ...(parsed.speed ? { speed: parsed.speed } : {}),
-                                    ...(parsed.total ? { total: parsed.total } : {}),
-                                    status: parsed.status,
-                                }));
+                                setProgress((prev) => ({ ...prev, ...parsed }));
                             }
                         }
                     };
-                    // ffmpeg outputs progress to stdout (-progress pipe:1) and info to stderr
-                    handle.process.stdout?.on('data', onFfmpegData);
-                    handle.process.stderr?.on('data', onFfmpegData);
+                    handle.process.stdout?.on('data', onData);
+                    handle.process.stderr?.on('data', onData);
                     await handle.process;
                     setProgress((prev) => ({ ...prev, percent: 100, status: 'complete' }));
                     setState('complete');

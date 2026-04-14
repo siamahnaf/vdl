@@ -11,6 +11,7 @@ export interface VideoFormat {
   label: string;
   hasVideo: boolean;
   hasAudio: boolean;
+  abr: number | null;
 }
 
 export interface DownloadProgress {

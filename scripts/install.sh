@@ -83,15 +83,23 @@ if [ "$(uname)" = "Darwin" ]; then
   fi
 fi
 
-# --- yt-dlp (auto-install) ---
+# --- yt-dlp (auto-install/upgrade) ---
 if command -v yt-dlp >/dev/null 2>&1; then
-  YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "found")
-  echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER})${RESET}"
+  echo -e "  ${CYAN}↑${RESET} Updating yt-dlp..."
+
+  if pip3 install -U yt-dlp >/dev/null 2>&1; then
+    YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "updated")
+    echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER})${RESET}"
+  else
+    YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "found")
+    echo -e "  ${YELLOW}!${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(could not update, using ${YTDLP_VER})${RESET}"
+  fi
 else
   echo -e "  ${CYAN}↓${RESET} Installing yt-dlp..."
 
   if pip3 install yt-dlp >/dev/null 2>&1; then
-    echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(installed)${RESET}"
+    YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "installed")
+    echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER})${RESET}"
   else
     fail "Could not install yt-dlp. Please try again."
   fi

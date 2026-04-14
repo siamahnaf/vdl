@@ -6,7 +6,8 @@ const FFMPEG_DIR = dirname(ffmpegStatic);
 function buildLabel(f) {
     const size = f.filesize ? ` ~ ${formatBytes(f.filesize)}` : '';
     if (!f.hasVideo && f.hasAudio) {
-        return `Audio only (${f.extension})${size}`;
+        const bitrateStr = f.abr ? ` ${Math.round(f.abr)}kbps` : '';
+        return `Audio only (${f.extension}${bitrateStr})${size}`;
     }
     return `${f.resolution} (${f.extension})${size}`;
 }
@@ -28,6 +29,7 @@ function parseFormat(f) {
         label: '',
         hasVideo,
         hasAudio,
+        abr: f.abr ?? null,
     };
     fmt.label = buildLabel(fmt);
     return fmt;
@@ -35,7 +37,10 @@ function parseFormat(f) {
 function deduplicateFormats(formats) {
     const seen = new Map();
     for (const f of formats) {
-        const key = `${f.resolution}-${f.hasVideo}-${f.hasAudio}`;
+        // Audio-only formats: include extension + bitrate in key to preserve all quality levels
+        const key = (!f.hasVideo && f.hasAudio)
+            ? `audio-${f.extension}-${Math.round(f.abr ?? 0)}`
+            : `${f.resolution}-${f.hasVideo}-${f.hasAudio}`;
         const existing = seen.get(key);
         if (!existing) {
             seen.set(key, f);
@@ -66,7 +71,9 @@ export async function getVideoInfo(url, noPlaylist = true) {
     args.push(url);
     const { stdout } = await execa('yt-dlp', args);
     const info = JSON.parse(stdout);
-    const allFormats = info.formats.map(parseFormat);
+    const allFormats = info.formats
+        .filter((f) => f.ext !== 'mhtml') // Exclude storyboard/thumbnail formats
+        .map(parseFormat);
     const videoFormats = deduplicateFormats(allFormats.filter((f) => f.hasVideo)).sort((a, b) => b.height - a.height);
     const audioFormats = deduplicateFormats(allFormats.filter((f) => f.hasAudio && !f.hasVideo));
     return {
