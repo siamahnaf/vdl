@@ -17,16 +17,18 @@ function formatTime(seconds: number): string {
  */
 export function parseYtdlpProgress(line: string): DownloadProgress | null {
   // Match download progress line
+  // Format: [download]   5.2% of ~ 300.00MiB at  5.23MiB/s ETA 00:12 (frag 3/64)
   const progressMatch = line.match(
-    /\[download\]\s+([\d.]+)%\s+of\s+~?([\d.]+\S+)\s+at\s+([\d.]+\S+)\s+ETA\s+(\S+)/
+    /\[download\]\s+([\d.]+)%\s+of\s+~?\s*([\d.]+\S+)\s+at\s+([\d.]+\S+)\s+ETA\s+(\S+)/
   );
 
   if (progressMatch) {
+    const eta = progressMatch[4]!;
     return {
       percent: parseFloat(progressMatch[1]!),
       total: progressMatch[2]!,
       speed: progressMatch[3]!,
-      eta: progressMatch[4]!,
+      eta: eta === 'Unknown' ? '' : eta,
       downloaded: '',
       status: 'downloading',
     };
