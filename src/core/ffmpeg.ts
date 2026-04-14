@@ -119,11 +119,14 @@ export function downloadM3u8(
     '-P', `home:${outputDir}`,
     '-P', `temp:${fragTmpDir}`,
     '-o', `${safeFilename}.${ext}`,
-    // +genpts: regenerate PTS from DTS
-    // +igndts: ignore incoming DTS — at HLS fragment boundaries DTS resets or goes
-    //   backwards, causing "Error muxing a packet" which truncates the output file.
-    //   Ignoring DTS and deriving it from PTS gives ffmpeg a clean monotonic sequence.
-    '--ppa', 'ffmpeg:-fflags +genpts+igndts -max_muxing_queue_size 9999 -movflags +faststart',
+    // yt-dlp's ppa 'ffmpeg:' args go AFTER -i (output position).
+    // To fix timestamps we need args BEFORE -i (input position), so use
+    // 'FixupM3u8+ffmpeg_i:' which yt-dlp inserts before the first -i flag.
+    // +genpts+igndts: regenerate PTS/DTS from scratch — HLS fragment boundaries
+    //   produce non-monotonic DTS that causes "Error muxing a packet" in the
+    //   MP4 muxer, truncating the output file by the last N segments.
+    '--ppa', 'FixupM3u8+ffmpeg_i:-fflags +genpts+igndts',
+    '--ppa', 'ffmpeg:-max_muxing_queue_size 9999 -movflags +faststart',
   );
 
   if (asAudio) {
