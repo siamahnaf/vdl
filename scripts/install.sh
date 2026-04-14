@@ -57,51 +57,48 @@ else
   fail "Installation cancelled"
 fi
 
-# --- yt-dlp (native binary — supports yt-dlp -U self-update, always latest) ---
-# macOS and Linux use standalone native binaries — no Python required
-# Other platforms fall back to Python zipapp (requires Python 3.10+)
-echo -e "  ${CYAN}↓${RESET} Fetching latest yt-dlp..."
-mkdir -p "$BIN_DIR"
+# --- Python 3.10+ (required by yt-dlp) ---
+if command -v pip3 >/dev/null 2>&1; then
+  PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+  PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+  PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+  if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 10 ]; then
+    echo -e "  ${GREEN}✓${RESET} ${BOLD}Python${RESET} ${DIM}(${PY_VER})${RESET}"
+  else
+    echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.10+${RESET} required ${DIM}(found ${PY_VER})${RESET}"
+    echo ""
+    echo -e "  ${BOLD}Please install Python 3.10 or newer:${RESET}"
+    echo -e "    ${CYAN}https://python.org${RESET}"
+    echo ""
+    fail "Installation cancelled"
+  fi
+else
+  echo -e "  ${RED}✗${RESET} ${BOLD}Python${RESET} not found"
+  echo ""
+  echo -e "  ${BOLD}Please install Python 3.10 or newer:${RESET}"
+  echo -e "    ${CYAN}https://python.org${RESET}"
+  echo ""
+  fail "Installation cancelled"
+fi
 
-UNAME=$(uname -s)
-ARCH=$(uname -m)
-case "${UNAME}-${ARCH}" in
-  Darwin-*)                      YTDLP_BIN="yt-dlp_macos" ;;
-  Linux-aarch64|Linux-arm64)     YTDLP_BIN="yt-dlp_linux_aarch64" ;;
-  Linux-*)                       YTDLP_BIN="yt-dlp_linux" ;;
-  *)
-    # Python zipapp fallback — requires Python 3.10+
-    PYTHON_OK=false
-    for cmd in python3 python; do
-      if command -v "$cmd" >/dev/null 2>&1; then
-        PY_VER=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-        PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
-        PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-        if [ "${PY_MAJOR:-0}" -ge 3 ] && [ "${PY_MINOR:-0}" -ge 10 ]; then
-          PYTHON_OK=true
-          break
-        fi
-      fi
-    done
-    if [ "$PYTHON_OK" = false ]; then
-      echo -e "  ${RED}✗${RESET} ${BOLD}Python 3.10+${RESET} required on this platform"
-      echo ""
-      echo -e "  ${BOLD}Please install Python 3.10 or newer:${RESET}"
-      echo -e "    ${CYAN}https://python.org${RESET}"
-      echo ""
-      fail "Installation cancelled"
-    fi
-    YTDLP_BIN="yt-dlp"
-    ;;
-esac
+# --- yt-dlp (install latest via pip from GitHub — bypasses stale PyPI version) ---
+echo -e "  ${CYAN}↓${RESET} Installing latest yt-dlp..."
 
-YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_BIN}"
+LATEST_TAG=$(curl -fsSL "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" 2>/dev/null)
 
-if curl -fsSL "$YTDLP_URL" -o "$BIN_DIR/yt-dlp" 2>/dev/null && chmod +x "$BIN_DIR/yt-dlp"; then
-  YTDLP_VER=$("$BIN_DIR/yt-dlp" --version 2>/dev/null || echo "installed")
+if [ -n "$LATEST_TAG" ]; then
+  pip3 install -q --force-reinstall \
+    "https://github.com/yt-dlp/yt-dlp/archive/refs/tags/${LATEST_TAG}.tar.gz" 2>/dev/null
+else
+  pip3 install -q -U yt-dlp 2>/dev/null
+fi
+
+YTDLP_VER=$(yt-dlp --version 2>/dev/null || echo "")
+if [ -n "$YTDLP_VER" ]; then
   echo -e "  ${GREEN}✓${RESET} ${BOLD}yt-dlp${RESET} ${DIM}(${YTDLP_VER})${RESET}"
 else
-  fail "Could not download yt-dlp. Please check your internet connection."
+  fail "Could not install yt-dlp. Please try again."
 fi
 
 # --- ffmpeg ---

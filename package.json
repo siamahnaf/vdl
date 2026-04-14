@@ -1,6 +1,6 @@
 {
   "name": "vdl",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Beautiful interactive CLI for downloading videos from any social media",
   "type": "module",
   "main": "dist/index.js",
