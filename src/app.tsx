@@ -74,6 +74,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
   const [m3u8Headers, setM3u8Headers] = useState<Record<string, string>>({});
   const [m3u8Qualities, setM3u8Qualities] = useState<{ url: string; label: string; height: number }[]>([]);
   const [selectedM3u8Height, setSelectedM3u8Height] = useState(0);
+  const [selectedM3u8, setSelectedM3u8] = useState('');
 
   // Check dependencies on mount
   useEffect(() => {
@@ -130,6 +131,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
 
           if (mediaFormat) {
             if (qualities.length === 1) {
+              setSelectedM3u8(qualities[0]!.url);
               setSelectedM3u8Height(qualities[0]!.height);
               setState('downloading');
             } else {
@@ -171,6 +173,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
 
           if (mediaFormat) {
             if (qualities.length === 1) {
+              setSelectedM3u8(qualities[0]!.url);
               setSelectedM3u8Height(qualities[0]!.height);
               setState('downloading');
             } else {
@@ -206,8 +209,9 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
           const filename = videoInfo?.title ?? `vdl-${Date.now()}`;
           const asAudio = mediaFormat === 'audio';
 
-          // Always pass the master URL + height so yt-dlp can merge video+audio properly
-          const handle = downloadM3u8(m3u8Url, outputDir, filename, asAudio, m3u8Headers, selectedM3u8Height);
+          // Pass the specific quality stream URL (already has video+audio muxed for HLS)
+          const streamUrl = selectedM3u8 || m3u8Url;
+          const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, m3u8Headers);
 
           const onData = (chunk: Buffer) => {
             const lines = chunk.toString().split('\n');
@@ -321,6 +325,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
 
     if (isM3u8) {
       if (m3u8Qualities.length === 1) {
+        setSelectedM3u8(m3u8Qualities[0]!.url);
         setSelectedM3u8Height(m3u8Qualities[0]!.height);
         setState('downloading');
       } else {
@@ -354,6 +359,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }: Props) {
   }, []);
 
   const handleM3u8QualitySelect = useCallback((item: { url: string; label: string; height: number }) => {
+    setSelectedM3u8(item.url);
     setSelectedM3u8Height(item.height);
     setState('downloading');
   }, []);

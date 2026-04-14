@@ -17,7 +17,7 @@ export declare function getM3u8Qualities(m3u8Url: string, headers?: Record<strin
 /**
  * Download an m3u8 stream using yt-dlp with concurrent fragment downloading.
  */
-export declare function downloadM3u8(m3u8Url: string, outputDir: string, filename: string, asAudio?: boolean, headers?: Record<string, string>, selectedHeight?: number): DownloadHandle;
+export declare function downloadM3u8(m3u8Url: string, outputDir: string, filename: string, asAudio?: boolean, headers?: Record<string, string>): DownloadHandle;
 /**
  * Get the duration of a media stream using ffprobe.
  */

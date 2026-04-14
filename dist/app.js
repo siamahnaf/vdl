@@ -48,6 +48,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
     const [m3u8Headers, setM3u8Headers] = useState({});
     const [m3u8Qualities, setM3u8Qualities] = useState([]);
     const [selectedM3u8Height, setSelectedM3u8Height] = useState(0);
+    const [selectedM3u8, setSelectedM3u8] = useState('');
     // Check dependencies on mount
     useEffect(() => {
         (async () => {
@@ -103,6 +104,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                     setM3u8Qualities(qualities);
                     if (mediaFormat) {
                         if (qualities.length === 1) {
+                            setSelectedM3u8(qualities[0].url);
                             setSelectedM3u8Height(qualities[0].height);
                             setState('downloading');
                         }
@@ -143,6 +145,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                     setM3u8Qualities(qualities);
                     if (mediaFormat) {
                         if (qualities.length === 1) {
+                            setSelectedM3u8(qualities[0].url);
                             setSelectedM3u8Height(qualities[0].height);
                             setState('downloading');
                         }
@@ -178,8 +181,9 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
                 if (isM3u8) {
                     const filename = videoInfo?.title ?? `vdl-${Date.now()}`;
                     const asAudio = mediaFormat === 'audio';
-                    // Always pass the master URL + height so yt-dlp can merge video+audio properly
-                    const handle = downloadM3u8(m3u8Url, outputDir, filename, asAudio, m3u8Headers, selectedM3u8Height);
+                    // Pass the specific quality stream URL (already has video+audio muxed for HLS)
+                    const streamUrl = selectedM3u8 || m3u8Url;
+                    const handle = downloadM3u8(streamUrl, outputDir, filename, asAudio, m3u8Headers);
                     const onData = (chunk) => {
                         const lines = chunk.toString().split('\n');
                         for (const line of lines) {
@@ -287,6 +291,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
         setMediaFormat(format);
         if (isM3u8) {
             if (m3u8Qualities.length === 1) {
+                setSelectedM3u8(m3u8Qualities[0].url);
                 setSelectedM3u8Height(m3u8Qualities[0].height);
                 setState('downloading');
             }
@@ -316,6 +321,7 @@ export default function App({ initialUrl, flagAudio, flagQuality }) {
         setState('downloading');
     }, []);
     const handleM3u8QualitySelect = useCallback((item) => {
+        setSelectedM3u8(item.url);
         setSelectedM3u8Height(item.height);
         setState('downloading');
     }, []);

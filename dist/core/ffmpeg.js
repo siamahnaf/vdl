@@ -61,7 +61,7 @@ export async function getM3u8Qualities(m3u8Url, headers = {}) {
 /**
  * Download an m3u8 stream using yt-dlp with concurrent fragment downloading.
  */
-export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, headers = {}, selectedHeight = 0) {
+export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, headers = {}) {
     const ext = asAudio ? 'mp3' : 'mp4';
     // Sanitize filename for the filesystem
     const safeFilename = filename.replace(/[/\\:*?"<>|]/g, '_');
@@ -74,18 +74,16 @@ export function downloadM3u8(m3u8Url, outputDir, filename, asAudio = false, head
     for (const [k, v] of headerEntries) {
         args.push('--add-header', `${k}:${v}`);
     }
-    // Format selection — lets yt-dlp merge video+audio from master playlist
-    if (selectedHeight > 0) {
-        args.push('-f', `bestvideo[height<=${selectedHeight}]+bestaudio/best[height<=${selectedHeight}]/best`);
-    }
-    args.push('--concurrent-fragments', '16', '--newline', '--ffmpeg-location', FFMPEG_DIR, '--no-playlist', '-P', `home:${outputDir}`, // Final file goes here
+    args.push('--concurrent-fragments', '16', '--retries', '10', '--fragment-retries', '10', '--no-abort-on-error', '--newline', '--ffmpeg-location', FFMPEG_DIR, '--no-playlist', '-P', `home:${outputDir}`, // Final file goes here
     '-P', `temp:${fragTmpDir}`, // Fragment temp files go here (kept out of downloads)
     '-o', `${safeFilename}.${ext}`);
     if (asAudio) {
         args.push('-x', '--audio-format', 'mp3');
     }
     else {
-        args.push('--merge-output-format', 'mp4');
+        args.push('--merge-output-format', 'mp4', 
+        // Increase ffmpeg muxing queue to prevent truncation on long streams
+        '--ppa', 'ffmpeg:-max_muxing_queue_size 9999');
     }
     args.push(m3u8Url);
     const proc = execa('yt-dlp', args);

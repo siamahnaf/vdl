@@ -89,8 +89,7 @@ export function downloadM3u8(
   outputDir: string,
   filename: string,
   asAudio: boolean = false,
-  headers: Record<string, string> = {},
-  selectedHeight: number = 0
+  headers: Record<string, string> = {}
 ): DownloadHandle {
   const ext = asAudio ? 'mp3' : 'mp4';
   // Sanitize filename for the filesystem
@@ -109,13 +108,11 @@ export function downloadM3u8(
     args.push('--add-header', `${k}:${v}`);
   }
 
-  // Format selection — lets yt-dlp merge video+audio from master playlist
-  if (selectedHeight > 0) {
-    args.push('-f', `bestvideo[height<=${selectedHeight}]+bestaudio/best[height<=${selectedHeight}]/best`);
-  }
-
   args.push(
     '--concurrent-fragments', '16',
+    '--retries', '10',
+    '--fragment-retries', '10',
+    '--no-abort-on-error',
     '--newline',
     '--ffmpeg-location', FFMPEG_DIR,
     '--no-playlist',
@@ -127,7 +124,11 @@ export function downloadM3u8(
   if (asAudio) {
     args.push('-x', '--audio-format', 'mp3');
   } else {
-    args.push('--merge-output-format', 'mp4');
+    args.push(
+      '--merge-output-format', 'mp4',
+      // Increase ffmpeg muxing queue to prevent truncation on long streams
+      '--ppa', 'ffmpeg:-max_muxing_queue_size 9999',
+    );
   }
 
   args.push(m3u8Url);
